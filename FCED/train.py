@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.functional import normalize
-from torch.optim import AdamW
+from torch.optim import AdamW, SGD
 from utils import *
 from configs import Config
 from model import BertED
@@ -70,7 +70,7 @@ def train(local_rank, args):
     model.to(device)
     optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999)) #TODO: Hyper parameters
     if args.sam:
-            base_optimizer = AdamW
+            base_optimizer = SGD
             optimizer = FriendlySAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
     # if args.amp:
         # model, optimizer = amp.initialize(model, optimizer, opt_level="O1") 
