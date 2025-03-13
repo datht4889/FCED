@@ -269,27 +269,30 @@ class ASAM(torch.optim.Optimizer):
     def first_step(self, zero_grad=False):
         wgrads = []
         for group in self.param_groups:
-            for n, p in group["params"]:
+            print(group["params"])
+            # for n, p in group["params"]:
+            for p in group["params"]:
                 if p.grad is None:
                     continue
                 t_w = self.state[p].get("eps")
                 if t_w is None:
                     t_w = torch.clone(p).detach()
                     self.state[p]["eps"] = t_w
-                if 'weight' in n:
-                    t_w[...] = p[...]
-                    t_w.abs_().add_(self.defaults["eta"])
-                    p.grad.mul_(t_w)
+                # if 'weight' in n:
+                #     t_w[...] = p[...]
+                #     t_w.abs_().add_(self.defaults["eta"])
+                #     p.grad.mul_(t_w)
                 wgrads.append(torch.norm(p.grad, p=2))
         wgrad_norm = torch.norm(torch.stack(wgrads), p=2) + 1.e-16
         
         for group in self.param_groups:
-            for n, p in group["params"]:
+            # for n, p in group["params"]:
+            for p in group["params"]:
                 if p.grad is None:
                     continue
                 t_w = self.state[p].get("eps")
-                if 'weight' in n:
-                    p.grad.mul_(t_w)
+                # if 'weight' in n:
+                #     p.grad.mul_(t_w)
                 eps = t_w
                 eps[...] = p.grad[...]
                 eps.mul_(group["rho"] / wgrad_norm)
@@ -301,7 +304,8 @@ class ASAM(torch.optim.Optimizer):
     @torch.no_grad()
     def second_step(self, zero_grad=False):
         for group in self.param_groups:
-            for n, p in group["params"]:
+            # for n, p in group["params"]:
+            for p in group["params"]:
                 if p.grad is None:
                     continue
                 p.sub_(self.state[p]["eps"])
