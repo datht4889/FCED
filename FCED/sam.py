@@ -405,7 +405,7 @@ class ESAM(torch.optim.Optimizer):
         defaults = dict(rho=rho,adaptive=adaptive, **kwargs)
         super(ESAM, self).__init__(params, defaults)
 
-        self.base_optimizer = base_optimizer
+        self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
         self.param_groups = self.base_optimizer.param_groups
         for group in self.param_groups:
             group["rho"] = rho
