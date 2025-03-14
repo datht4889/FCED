@@ -533,6 +533,7 @@ class ExcessMTL(WeightMethod):
         return loss, extra_outputs
 
 
+
 class LinearScalarization(WeightMethod):
     """Linear scalarization baseline L = sum_j w_j * l_j where l_j is the loss for task j and w_h"""
 

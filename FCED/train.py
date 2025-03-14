@@ -72,7 +72,8 @@ def train(local_rank, args):
     if args.sam:
             base_optimizer = AdamW
             # optimizer = SAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
-            optimizer = ASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+            # optimizer = ASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+            optimizer = ESAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, beta=1.0,gamma=1.0, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
     # if args.amp:
         # model, optimizer = amp.initialize(model, optimizer, opt_level="O1") 
     if args.parallel == 'DDP':
@@ -595,15 +596,15 @@ def train(local_rank, args):
                             # loss = loss * (1 - w) + (loss_fd + loss_pd) * w
                             # loss.backward()
                             loss_list = [loss, loss_fd, loss_pd]
-                            alpha_w = 1 
-                            loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
+                            # alpha_w = 1 
+                            # loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
 
                         else:
                             # loss = loss + args.alpha * loss_fd + args.beta * loss_pd
                             # loss_list = [loss, args.alpha * loss_fd, args.beta * loss_pd]
                             loss_list = [loss, loss_fd, loss_pd]
-                            alpha_w = 1
-                            loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
+                            # alpha_w = 1
+                            # loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
 
                         if args.mul_task_type == 'PCGrad':
                             mul_loss = PCGrad(
