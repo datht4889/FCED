@@ -80,7 +80,7 @@ def train(local_rank, args):
             elif args.sam_optimizer=='GCSAM':
                 optimizer = GCSAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
             elif args.sam_optimizer=='LookbehindASAM':
-                optimizer = LookbehindSAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+                optimizer = LookbehindASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
     # if args.amp:
         # model, optimizer = amp.initialize(model, optimizer, opt_level="O1") 
     if args.parallel == 'DDP':
