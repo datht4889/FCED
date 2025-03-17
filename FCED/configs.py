@@ -151,3 +151,4 @@ class Config:
         self.skip_first_cl = "ucl+tlcl"
         self.method = None
         self.mul_task_type = 'FairGrad'
+        self.sam_optimizer = 'LookbehindASAM'
