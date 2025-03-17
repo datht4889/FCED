@@ -602,16 +602,16 @@ def train(local_rank, args):
                         if args.dweight_loss and stage > 0:
                             # loss = loss * (1 - w) + (loss_fd + loss_pd) * w
                             # loss.backward()
-                            loss_list = [loss, loss_fd, loss_pd]
-                            # alpha_w = 1 
-                            # loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
+                            # loss_list = [loss, loss_fd, loss_pd]
+                            alpha_w = 1 
+                            loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
 
                         else:
                             # loss = loss + args.alpha * loss_fd + args.beta * loss_pd
                             # loss_list = [loss, args.alpha * loss_fd, args.beta * loss_pd]
-                            loss_list = [loss, loss_fd, loss_pd]
-                            # alpha_w = 1
-                            # loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
+                            # loss_list = [loss, loss_fd, loss_pd]
+                            alpha_w = 1
+                            loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
 
                         if args.mul_task_type == 'PCGrad':
                             mul_loss = PCGrad(
@@ -640,8 +640,6 @@ def train(local_rank, args):
                         if args.mul_task_type == 'ExcessMTL':
                             mul_loss = ExcessMTL(n_tasks=len(loss_list), device=device)
 
-                        # if args.mul_task_type == 'FAMO':
-                        #     mul_loss = FAMO(n_tasks=len(loss_list), device=device)
                         parameters = [p for p in model.parameters() if p.requires_grad ]
                         loss, alpha = mul_loss(losses=loss_list, shared_parameters=parameters)
                     else:
