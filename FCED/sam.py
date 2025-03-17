@@ -528,7 +528,7 @@ class ESAM(torch.optim.Optimizer):
                )
         return norm
     
-class LookbehindASAM(ASAM):
+class LookbehindASAM(torch.optim.Optimizer):
     def __init__(self, params, base_optimizer, rho=0.5, eta=0.01, k_steps=5, alpha=0.5, **kwargs):
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
 
@@ -603,6 +603,42 @@ class LookbehindASAM(ASAM):
                 del param_state['backup_params']
 
     @torch.no_grad()
+    def first_step(self, zero_grad=False):
+        wgrads = []
+        for group in self.param_groups:
+            # for n, p in group["params"]:
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                t_w = self.state[p].get("eps")
+                if t_w is None:
+                    t_w = torch.clone(p).detach()
+                    self.state[p]["eps"] = t_w
+                # if 'weight' in n:
+                #     t_w[...] = p[...]
+                #     t_w.abs_().add_(self.defaults["eta"])
+                #     p.grad.mul_(t_w)
+                wgrads.append(torch.norm(p.grad, p=2))
+        wgrad_norm = torch.norm(torch.stack(wgrads), p=2) + 1.e-16
+        
+        for group in self.param_groups:
+            # for n, p in group["params"]:
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                t_w = self.state[p].get("eps")
+                # if 'weight' in n:
+                #     p.grad.mul_(t_w)
+                eps = t_w
+                eps[...] = p.grad[...]
+                eps.mul_(group["rho"] / wgrad_norm)
+                p.add_(eps)
+        
+        if zero_grad:
+            self.zero_grad()
+    
+
+    @torch.no_grad()
     def second_step(self, zero_grad=False):
         self._backup_and_load_cache()
 
@@ -641,7 +677,81 @@ class LookbehindASAM(ASAM):
                     param_state['cached_slow_params'].copy_(p.data)
 
 
-class LookbehindSAM(LookbehindASAM):
+class LookbehindSAM(torch.optim.Optimizer):
+    def __init__(self, params, base_optimizer, rho=0.5, eta=0.01, k_steps=5, alpha=0.5, **kwargs):
+        assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
+
+        self.rho = rho
+        self.eta = eta
+        self.k_steps = k_steps
+        self.alpha = alpha
+        self.k = 0
+
+        defaults = dict(rho=rho, eta=eta, **kwargs)
+        super(LookbehindASAM, self).__init__(params, defaults)
+        
+        self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
+        self.param_groups = self.base_optimizer.param_groups
+        self.defaults.update(self.base_optimizer.defaults)
+        
+        self.state = defaultdict(dict)
+
+        for group in self.param_groups:
+            for p in group['params']:
+                param_state = self.state[p]
+                param_state['cached_params'] = torch.zeros_like(p.data)
+                param_state['cached_params'].copy_(p.data)
+                param_state['cached_slow_params'] = torch.zeros_like(p.data)
+                param_state['cached_slow_params'].copy_(p.data)
+                if self.alpha == -1:
+                    param_state['first_descent_step'] = torch.zeros_like(p.data)
+
+
+    def get_current_k(self):
+        return self.k
+
+    def _cache_params(self):
+        """ Cache the current optimizer parameters
+        """
+        for group in self.param_groups:
+            for p in group['params']:
+                param_state = self.state[p]
+                param_state['cached_params'].copy_(p.data)
+
+    def _cache_slow_params(self):
+        """ Cache the slow optimizer parameters
+        """
+        for group in self.param_groups:
+            for p in group['params']:
+                param_state = self.state[p]
+                param_state['cached_slow_params'].copy_(p.data)
+
+    def _backup_and_load_slow_cache(self):
+        """Useful for performing evaluation on the slow weights (which typically generalize better)
+        """
+        for group in self.param_groups:
+            for p in group['params']:
+                param_state = self.state[p]
+                param_state['backup_params'] = torch.zeros_like(p.data)
+                param_state['backup_params'].copy_(p.data)
+                p.data.copy_(param_state['cached_slow_params'])
+
+    def _backup_and_load_cache(self):
+        for group in self.param_groups:
+            for p in group['params']:
+                param_state = self.state[p]
+                param_state['backup_params'] = torch.zeros_like(p.data)
+                param_state['backup_params'].copy_(p.data)
+                p.data.copy_(param_state['cached_params'])
+
+    def _clear_and_load_backup(self):
+        for group in self.param_groups:
+            for p in group['params']:
+                param_state = self.state[p]
+                p.data.copy_(param_state['backup_params'])
+                del param_state['backup_params']
+
+
     @torch.no_grad()
     def first_step(self, zero_grad=False):
         grads = []
@@ -665,3 +775,41 @@ class LookbehindSAM(LookbehindASAM):
                 p.add_(eps)
         if zero_grad:
             self.zero_grad()
+
+    @torch.no_grad()
+    def second_step(self, zero_grad=False):
+        self._backup_and_load_cache()
+
+        self.base_optimizer.step()
+        if zero_grad:
+            self.zero_grad()
+
+        if self.alpha == -1 and self.k == 0: #adaptive alpha
+            for group in self.param_groups:
+                for p in group['params']:
+                    param_state = self.state[p]
+                    param_state['first_descent_step'] = torch.zeros_like(p.data)
+                    param_state['first_descent_step'].copy_(p.data)
+
+        self._cache_params()
+        self._clear_and_load_backup()
+
+        self.k += 1
+
+        if self.k >= self.k_steps:
+            self.k = 0
+
+            # Lookbehind and cache the current optimizer parameters
+            for group in self.param_groups:
+                for p in group['params']:
+                    param_state = self.state[p]
+                    p.data.copy_(param_state['cached_params'])
+                    if self.alpha == -1: #adaptive alpha
+                        cos_sim = torch.nn.CosineSimilarity(dim=0)
+                        tmp_alpha = cos_sim((param_state['first_descent_step']-param_state['cached_slow_params']).flatten(), (p.data-param_state['cached_slow_params']).flatten())
+                        tmp_alpha = ((tmp_alpha+1.)/2.).item()
+                        p.data.mul_(tmp_alpha).add_(param_state['cached_slow_params'], alpha=1.0 - tmp_alpha)
+                    else:
+                        p.data.mul_(self.alpha).add_(param_state['cached_slow_params'], alpha=1.0 - self.alpha)
+                    param_state['cached_params'].copy_(p.data)
+                    param_state['cached_slow_params'].copy_(p.data)
