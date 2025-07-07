@@ -425,7 +425,7 @@ class EncodingModel_LLM2vec(nn.Module):
             pooling_mode="mean",
             max_length=512,
             skip_instruction = False,
-            token="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"
+            token="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"
         )
         # merge LoRA of encoder
 
