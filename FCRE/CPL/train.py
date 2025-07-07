@@ -400,17 +400,17 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task_name", default="FewRel", type=str)
-    parser.add_argument("--num_k", default=5, type=int)
-    parser.add_argument("--num_gen", default=5, type=int)
+    parser.add_argument("--task_name", default="Tacred", type=str) # Tacred, FewRel
+    parser.add_argument("--num_k", default=5, type=int) # 5
+    parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true', default=True)
-    parser.add_argument("--epoch", default=8, type=int)
-    parser.add_argument("--epoch_mem", default=6, type=int)
-    parser.add_argument("--mixup_loss_1", default=0.25, type=float)
-    parser.add_argument("--mixup_loss_2", default=0.25, type=float)
+    parser.add_argument("--epoch", default=8, type=int) # 8, 10
+    parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
+    parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
+    parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--SAM", action = 'store_true', default=True)
     parser.add_argument("--SAM_type", default="current", type=str, help="current for SAM in current task or full for SAM in all data")
-    parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--rho", default=0.05, type=float) # 0.05, 0.1
     
     args = parser.parse_args()
     config = Config('config_llm.ini')
