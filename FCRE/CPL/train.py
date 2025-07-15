@@ -115,7 +115,7 @@ class Manager(object):
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
                 print("-"*50)
-                print(instance['input'])
+                print(instance)
                 print("-"*50)
                 print()
                 hidden = encoder(instance['input'])
