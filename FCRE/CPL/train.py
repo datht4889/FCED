@@ -444,7 +444,7 @@ if __name__ == '__main__':
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--SAM", action = 'store_true', default=True)
-    parser.add_argument("--SAM_type", default="current", type=str, help="current for SAM in current task or full for SAM in all data")
+    parser.add_argument("--SAM_type", default="current", type=str, help="'current' for SAM in current task or 'full' for SAM in all data")
     parser.add_argument("--rho", default=0.05, type=float) # 0.05, 0.1
     
     args = parser.parse_args()
