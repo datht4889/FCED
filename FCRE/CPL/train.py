@@ -117,7 +117,6 @@ class Manager(object):
                 if self.config.use_llm:
                     hidden = encoder(instance['input'])
                 else:
-                    instance.to(self.config.device)
                     hidden = encoder(instance)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)    
                 if not self.config.SAM:
