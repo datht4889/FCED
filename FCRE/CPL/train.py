@@ -176,8 +176,10 @@ class Manager(object):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
                 label_first = [temp[0] for temp in labels]
                 label_second = [temp[1] for temp in labels]
-                
-                mask_hidden_1, mask_hidden_2 = encoder.forward_mixup(instance['input'])
+                if self.config.use_llm:
+                    mask_hidden_1, mask_hidden_2 = encoder.forward_mixup(instance['input'])
+                else:
+                    mask_hidden_1, mask_hidden_2 = encoder.forward_mixup(instance)
                 n = len(label_first)
                 m = len(label_second)
                 new_matrix_labels = np.zeros((n, m), dtype=float)
@@ -230,7 +232,10 @@ class Manager(object):
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.first_step(zero_grad=True)
-                    mask_hidden_1, mask_hidden_2 = encoder.forward_mixup(instance['input'])
+                    if self.config.use_llm:
+                        mask_hidden_1, mask_hidden_2 = encoder.forward_mixup(instance['input'])
+                    else:
+                        mask_hidden_1, mask_hidden_2 = encoder.forward_mixup(instance)
                     loss1 = neg_cos_sim_loss(mask_hidden_1, mask_hidden_2)
                     mask_hidden_mean_12 = (mask_hidden_1 + mask_hidden_2) / 2
                     loss2 = loss_retrieval(mask_hidden_mean_12, mask_hidden_mean_12, matrix_labels_tensor_mean_12)
