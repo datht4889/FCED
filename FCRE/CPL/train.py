@@ -11,7 +11,7 @@ from config import Config
 
 
 from sampler_bert_llm import data_sampler_CFRL
-from data_loader import get_data_loader_BERTLLM
+from data_loader import get_data_loader_BERTLLM, get_data_loader_BERT
 from utils_llm import Moment_LLM, gen_data
 from utils import Moment, gen_data
 from encoder_llm import EncodingModel_LLM2vec
@@ -101,7 +101,10 @@ class Manager(object):
         # return mem_set, features, rel_proto
         
     def train_model(self, encoder, training_data, is_memory=False):
-        data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
+        if self.config.use_llm:
+            data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
+        else:
+            data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
             base_optimizer = optim.Adam
