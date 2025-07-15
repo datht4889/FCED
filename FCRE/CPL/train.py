@@ -114,10 +114,7 @@ class Manager(object):
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
-                print("-"*50)
-                print(instance)
-                print("-"*50)
-                print()
+                instance.to(self.config.device)
                 if self.config.use_llm:
                     hidden = encoder(instance['input'])
                 else:
