@@ -575,6 +575,7 @@ if __name__ == '__main__':
     print('his_acc mean: ', np.around(ave, 4))
     logger.info('----------END')
     logger.info(f'his_acc mean: {np.around(ave, 4)}')
+    logger.info(f'his_acc mean: {np.around(ave, 4)*100}')
 
 
 
