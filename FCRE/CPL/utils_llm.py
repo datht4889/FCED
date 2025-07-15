@@ -34,6 +34,8 @@ class Moment:
             for step, (instance, labels, ind) in enumerate(data_loader):
                 # for k in ['ids', 'mask']:
                 #     instance[k] = instance[k].to(self.config.device)
+                print(instance)
+                breakpoint()
                 hidden = encoder(instance['input'])
                 fea = hidden.detach().cpu().data
                 self.update(ind, fea)
