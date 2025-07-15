@@ -14,6 +14,7 @@ from sampler_bert_llm import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM
 from utils_llm import Moment, gen_data
 from encoder_llm import EncodingModel_LLM2vec
+from encoder import EncodingModel
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
 from transformers import BertTokenizer
 from mixup import mixup_data_augmentation_llm
@@ -302,7 +303,10 @@ class Manager(object):
         self.r2desc = self._read_description(self.config.relation_description)
 
         # encoder
-        encoder = EncodingModel_LLM2vec(self.config)
+        if self.config.use_llm:
+            encoder = EncodingModel_LLM2vec(self.config)
+        else:
+            encoder = EncodingModel(self.config)
 
         # step is continual task number
         cur_acc, total_acc = [], []
@@ -400,6 +404,7 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument("--use_llm", action = 'store_true', default=False)
     parser.add_argument("--task_name", default="Tacred", type=str) # Tacred, FewRel
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
@@ -414,6 +419,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     config = Config('config_llm.ini')
+    config.use_llm = args.use_llm
     config.task_name = args.task_name
     config.num_k = args.num_k
     config.num_gen = args.num_gen
