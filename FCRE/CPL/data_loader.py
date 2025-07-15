@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
@@ -36,7 +37,9 @@ class BERTDataset(Dataset):
 
         batch_label = torch.tensor([item[0]['relation'] for item in data])
         batch_instance['ids'] = torch.tensor([item[0]['ids'] for item in data])
-        batch_instance['mask'] = torch.tensor([item[0]['mask'] for item in data])
+        masks = np.array([item[0]['mask'] for item in data])
+        batch_instance['mask'] = torch.from_numpy(masks)
+        # batch_instance['mask'] = torch.tensor([item[0]['mask'] for item in data])
         batch_idx = torch.tensor([item[1] for item in data])
         
         return batch_instance, batch_label, batch_idx
