@@ -128,8 +128,11 @@ class EncodingModel(nn.Module):
 
             
     def forward(self, inputs, is_augment=False): # (b, max_length)
-        inputs['ids'] = inputs['ids'].to(self.config.device)
-        inputs['mask'] = inputs['mask'].to(self.config.device)
+        try:
+            inputs['ids'] = inputs['ids'].to(self.config.device)
+            inputs['mask'] = inputs['mask'].to(self.config.device)
+        except:
+            print(inputs)
         batch_size = inputs['ids'].size()[0]
         tensor_range = torch.arange(batch_size) # (b)     
         pattern = self.config.pattern
