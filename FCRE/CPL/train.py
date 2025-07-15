@@ -54,7 +54,10 @@ class Manager(object):
         features = []
         encoder.eval()
         for step, (instance, label, idx) in enumerate(data_loader):
-            hidden = encoder(instance['input']).float()
+            if self.config.use_llm:
+                hidden = encoder(instance['input']).float()
+            else:
+                hidden = encoder(instance).float()
             fea = hidden.detach().cpu().data # (1, H)
             features.append(fea)    
         features = torch.cat(features, dim=0) # (M, H)
@@ -72,7 +75,10 @@ class Manager(object):
         features = []
         encoder.eval()
         for step, (instance, label, idx) in enumerate(data_loader):
-            hidden = encoder(instance['input']).float()
+            if self.config.use_llm:
+                hidden = encoder(instance['input']).float()
+            else:
+                hidden = encoder(instance).float()
             fea = hidden.detach().cpu().data # (1, H)
             features.append(fea)
 
