@@ -12,7 +12,8 @@ from config import Config
 
 from sampler_bert_llm import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM
-from utils_llm import Moment, gen_data
+from utils_llm import Moment_LLM, gen_data
+from utils import Moment, gen_data
 from encoder_llm import EncodingModel_LLM2vec
 from encoder import EncodingModel
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
@@ -319,7 +320,10 @@ class Manager(object):
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
             
             # Initialization
-            self.moment = Moment(self.config)
+            if self.config.use_llm:
+                self.moment = Moment_LLM(self.config)
+            else:
+                self.moment = Moment(self.config)
 
             # Train current task
             training_data_initialize = []

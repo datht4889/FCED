@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
-class Moment:
+class Moment_LLM:
     def __init__(self, config) -> None:
         self.config = config
         self.features = None
