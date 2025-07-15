@@ -128,7 +128,10 @@ class Manager(object):
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.first_step(zero_grad=True)
-                    hidden = encoder(instance['input'])
+                    if self.config.use_llm:
+                        hidden = encoder(instance['input'])
+                    else:
+                        hidden = encoder(instance)
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
                     loss.backward()
                     optimizer.second_step(zero_grad=True)
@@ -259,7 +262,10 @@ class Manager(object):
         total = 0.0
         encoder.eval()
         for batch_num, (instance, label, _) in enumerate(test_loader):
-            hidden = encoder(instance['input']).float()
+            if self.config.use_llm:
+                hidden = encoder(instance['input']).float()
+            else:
+                hidden = encoder(instance).float()
             fea = hidden.cpu().data # place in cpu to eval
             logits = -self._edist(fea, seen_proto) # (B, N) ;N is the number of seen relations
 
