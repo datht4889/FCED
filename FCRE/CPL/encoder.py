@@ -60,6 +60,8 @@ class EncodingModel(nn.Module):
         return input_embedding
 
     def forward_des(self, inputs): # (b, max_length)
+        inputs['ids'] = inputs['ids'].to(self.config.device)
+        inputs['mask'] = inputs['mask'].to(self.config.device)
         batch_size = inputs['ids'].size()[0]
         tensor_range = torch.arange(batch_size) # (b)     
         pattern = self.config.pattern
@@ -90,6 +92,8 @@ class EncodingModel(nn.Module):
 
     
     def forward_mask_dropout(self, inputs): # (b, max_length)
+        inputs['ids'] = inputs['ids'].to(self.config.device)
+        inputs['mask'] = inputs['mask'].to(self.config.device)
         batch_size = inputs['ids'].size()[0]
         tensor_range = torch.arange(batch_size) # (b)     
         
@@ -108,6 +112,8 @@ class EncodingModel(nn.Module):
         else:
             raise NotImplementedError
     def forward_mixup(self, inputs):
+        inputs['ids'] = inputs['ids'].to(self.config.device)
+        inputs['mask'] = inputs['mask'].to(self.config.device)
         batch_size = inputs['ids'].size()[0]
         tensor_range = torch.arange(batch_size)
 
@@ -128,11 +134,8 @@ class EncodingModel(nn.Module):
 
             
     def forward(self, inputs, is_augment=False): # (b, max_length)
-        try:
-            inputs['ids'] = inputs['ids'].to(self.config.device)
-            inputs['mask'] = inputs['mask'].to(self.config.device)
-        except:
-            print(inputs)
+        inputs['ids'] = inputs['ids'].to(self.config.device)
+        inputs['mask'] = inputs['mask'].to(self.config.device)
         batch_size = inputs['ids'].size()[0]
         tensor_range = torch.arange(batch_size) # (b)     
         pattern = self.config.pattern
