@@ -422,7 +422,10 @@ if __name__ == '__main__':
     parser.add_argument("--rho", default=0.05, type=float) # 0.05, 0.1
     
     args = parser.parse_args()
-    config = Config('config_llm.ini')
+    if args.use_llm:
+        config = Config('config_llm.ini')
+    else:
+        config = Config('config.ini')
     config.use_llm = args.use_llm
     config.task_name = args.task_name
     config.num_k = args.num_k
