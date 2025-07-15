@@ -114,10 +114,10 @@ class Manager(object):
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
-                instance.to(self.config.device)
                 if self.config.use_llm:
                     hidden = encoder(instance['input'])
                 else:
+                    instance.to(self.config.device)
                     hidden = encoder(instance)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)    
                 if not self.config.SAM:
