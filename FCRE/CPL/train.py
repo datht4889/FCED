@@ -111,6 +111,10 @@ class Manager(object):
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
+                print("-"*50)
+                print(instance['input'])
+                print("-"*50)
+                print()
                 hidden = encoder(instance['input'])
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)    
                 if not self.config.SAM:
