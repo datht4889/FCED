@@ -118,7 +118,10 @@ class Manager(object):
                 print(instance)
                 print("-"*50)
                 print()
-                hidden = encoder(instance['input'])
+                if self.config.use_llm:
+                    hidden = encoder(instance['input'])
+                else:
+                    hidden = encoder(instance)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)    
                 if not self.config.SAM:
                     optimizer.zero_grad()
