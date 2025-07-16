@@ -256,10 +256,10 @@ class Manager(object):
                     merged_labels = torch.cat((torch.tensor(label_first), torch.tensor(label_second)), dim=0)
                     
         
-                    if merged_hidden.shape[1] != 4096: # hard code :)
-                        print('something wrong')
-                        logger.info("something wrong")
-                        continue
+                    # if merged_hidden.shape[1] != 4096: # hard code :)
+                    #     print('something wrong')
+                    #     logger.info("something wrong")
+                    #     continue
                     loss = self.moment.contrastive_loss(merged_hidden, merged_labels, is_memory = True)
                     sum_loss = 0.0
                     if not torch.isnan(loss1).any():
