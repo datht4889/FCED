@@ -448,7 +448,7 @@ class Manager(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_llm", action = 'store_true', default=False)
-    parser.add_argument("--task_name", default="Tacred", type=str) # Tacred, FewRel
+    parser.add_argument("--task_name", default="FewRel", type=str) # Tacred, FewRel
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true', default=True)
