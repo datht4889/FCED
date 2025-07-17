@@ -448,7 +448,6 @@ class Manager(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_llm", action = 'store_true', default=False)
-    parser.add_argument("--task_name", default="FewRel", type=str) # Tacred, FewRel
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true', default=True)
@@ -459,9 +458,6 @@ if __name__ == '__main__':
     # SAM
     parser.add_argument("--SAM", action = 'store_true', default=True)
     parser.add_argument("--SAM_type", default="current", type=str, help="'current' for SAM in current task or 'full' for SAM in all data")
-    parser.add_argument("--sam_optimizer", default="SAM", type=str, help="SAM, ASAM, ESAM, GCSAM, LookbehindASAM")
-    parser.add_argument("--rho", default=0.05, type=float) # 0.05, 0.1
-    parser.add_argument("--decay", default=1e-2, type=float)
     
     args = parser.parse_args()
     if args.use_llm:
@@ -469,7 +465,6 @@ if __name__ == '__main__':
     else:
         config = Config('config.ini')
     config.use_llm = args.use_llm
-    config.task_name = args.task_name
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
@@ -480,9 +475,6 @@ if __name__ == '__main__':
 
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
-    config.sam_optimizer = args.sam_optimizer
-    config.rho = args.rho
-    config.decay = args.decay
 
     # config 
     print('#############params############')
