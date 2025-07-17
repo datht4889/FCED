@@ -49,8 +49,10 @@ class Manager(object):
         '''
         only for one relation data
         '''
-        data_loader = get_data_loader_BERTLLM(config, dataset, shuffle=False, \
-            drop_last=False,  batch_size=1) 
+        if self.config.use_llm:
+            data_loader = get_data_loader_BERTLLM(config, dataset, shuffle=False, drop_last=False,  batch_size=1) 
+        else:
+            data_loader = get_data_loader_BERT(config, dataset, shuffle=False, drop_last=False,  batch_size=1)
         features = []
         encoder.eval()
         for step, (instance, label, idx) in enumerate(data_loader):
@@ -70,8 +72,10 @@ class Manager(object):
         only for one relation data
         '''
         N, M = len(dataset), self.config.memory_size
-        data_loader = get_data_loader_BERTLLM(self.config, dataset, shuffle=False, \
-            drop_last= False, batch_size=1) # batch_size must = 1
+        if self.config.use_llm:
+            data_loader = get_data_loader_BERTLLM(self.config, dataset, shuffle=False, drop_last= False, batch_size=1) # batch_size must = 1
+        else:
+            data_loader = get_data_loader_BERT(self.config, dataset, shuffle=False, drop_last= False, batch_size=1) # batch_size must = 1
         features = []
         encoder.eval()
         for step, (instance, label, idx) in enumerate(data_loader):
@@ -173,7 +177,10 @@ class Manager(object):
                 sys.stdout.flush() 
         print('')           
     def train_model_mixup(self, encoder, training_data):
-        data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
+        if self.config.use_llm:
+            data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
+        else:
+            data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
             base_optimizer = optim.Adam
@@ -283,7 +290,10 @@ class Manager(object):
     
     def eval_encoder_proto(self, encoder, seen_proto, seen_relid, test_data):
         batch_size = self.config.batch_size
-        test_loader = get_data_loader_BERTLLM(self.config, test_data, False, False, batch_size)
+        if self.config.use_llm:
+            test_loader = get_data_loader_BERTLLM(self.config, test_data, False, False, batch_size)
+        else:
+            test_loader = get_data_loader_BERT(self.config, test_data, False, False, batch_size)
         
         corrects = 0.0
         total = 0.0
