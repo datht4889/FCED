@@ -75,6 +75,9 @@ class BERTLLMDataset(Dataset):
         return (self.data[idx], idx)
 
     def collate_fn(self, data):
+        print('-'*50)
+        print(data)
+        print('-'*50)
         batch_instance = {'input': [],'ids': [], 'mask': []} 
         batch_label = []
         batch_idx = []
