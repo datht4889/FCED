@@ -120,21 +120,21 @@ class Manager(object):
             data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            base_optimizer = optim.Adam
-            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-            # base_optimizer = optim.AdamW
-            # if self.config.sam_optimizer=='SAM':
-            #     optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            # elif self.config.sam_optimizer=='ASAM':
-            #     optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            # elif self.config.sam_optimizer=='ESAM':
-            #     optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            # elif self.config.sam_optimizer=='GCSAM':
-            #     optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            # elif self.config.sam_optimizer=='FriendlySAM':
-            #     optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            # elif self.config.sam_optimizer=='LookbehindASAM':
-            #     optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            # base_optimizer = optim.Adam
+            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+            base_optimizer = optim.AdamW
+            if self.config.sam_optimizer=='SAM':
+                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ASAM':
+                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ESAM':
+                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='GCSAM':
+                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='FriendlySAM':
+                optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindASAM':
+                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
