@@ -135,6 +135,8 @@ class Manager(object):
                 optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
             elif self.config.sam_optimizer=='LookbehindASAM':
                 optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindSAM':
+                optimizer = LookbehindSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
