@@ -16,7 +16,7 @@ from utils import Moment, gen_data
 from encoder import EncodingModel
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
 from mixup import mixup_data_augmentation
-from sam import SAM
+from sam import *
 
 from dotenv import load_dotenv
 import os
@@ -115,8 +115,20 @@ class Manager(object):
         data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            base_optimizer = optim.Adam
-            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+            # base_optimizer = optim.Adam
+            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+
+            base_optimizer = optim.AdamW
+            if args.sam_optimizer=='SAM':
+                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+            elif args.sam_optimizer=='ASAM':
+                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+            elif args.sam_optimizer=='ESAM':
+                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+            elif args.sam_optimizer=='GCSAM':
+                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+            elif args.sam_optimizer=='LookbehindASAM':
+                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
         softmax = nn.Softmax(dim=0)
@@ -587,7 +599,7 @@ if __name__ == '__main__':
     print('----------END')
     print('his_acc mean: ', np.around(ave, 4))
     logger.info('----------END')
-    logger.info(f'his_acc mean: {np.around(ave, 4)}')
+    logger.info(f'his_acc mean: {np.around(ave, 4)*100}')
 
 
 
