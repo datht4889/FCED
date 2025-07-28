@@ -470,9 +470,6 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
-    # SAM
-    parser.add_argument("--SAM", action = 'store_true', default=True)
-    parser.add_argument("--SAM_type", default="current", type=str, help="'current' for SAM in current task or 'full' for SAM in all data")
     
     args = parser.parse_args()
     if args.use_llm:
@@ -487,9 +484,6 @@ if __name__ == '__main__':
     config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
-
-    config.SAM = args.SAM
-    config.SAM_type = args.SAM_type
 
     # config 
     print('#############params############')
@@ -585,8 +579,10 @@ if __name__ == '__main__':
     logger.info('----------END')
     logger.info(f'his_acc mean: {np.around(ave, 4)}')
     logger.info(f'his_acc mean: {np.around(ave, 4)*100}')
+    logger.info(f'SAM: {config.SAM}')
+    logger.info(f'SAM_type: {config.SAM_type}')
     logger.info(f'SAM Optimizer: {config.sam_optimizer}')
-
+    logger.info(f'decay: {config.decay}')
 
 
 
