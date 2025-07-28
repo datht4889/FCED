@@ -113,7 +113,7 @@ class Manager(object):
 
     def train_model(self, encoder, training_data, is_memory=False):
         data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
-        optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+        optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
             # base_optimizer = optim.Adam
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
