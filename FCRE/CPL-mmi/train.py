@@ -619,6 +619,10 @@ if __name__ == '__main__':
     print('his_acc mean: ', np.around(ave, 4))
     logger.info('----------END')
     logger.info(f'his_acc mean: {np.around(ave, 4)*100}')
+    logger.info(f'SAM: {config.SAM}')
+    logger.info(f'SAM_type: {config.SAM_type}')
+    logger.info(f'SAM Optimizer: {config.sam_optimizer}')
+    logger.info(f'decay: {config.decay}')
 
 
 
