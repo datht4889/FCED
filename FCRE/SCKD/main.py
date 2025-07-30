@@ -802,9 +802,6 @@ if __name__ == '__main__':
     parser.add_argument("--loss1_factor", default=0.5, type=float)
     parser.add_argument("--loss2_factor", default=0.5, type=float)
     parser.add_argument("--mixup", action = "store_true")
-    parser.add_argument("--SAM", action = "store_true")
-    parser.add_argument("--rho", default=0.05, type=float)
-    parser.add_argument("--SAM_type", default = "", type = str)
     args = parser.parse_args()
     config = Config(args.config)
     config.step1_epochs = args.step1_epochs
@@ -813,9 +810,6 @@ if __name__ == '__main__':
     config.loss1_factor = args.loss1_factor
     config.loss2_factor = args.loss2_factor
     config.mixup = args.mixup
-    config.SAM = args.SAM
-    config.rho = args.rho
-    config.SAM_type = args.SAM_type
     config.device = torch.device(config.device)
     config.n_gpu = torch.cuda.device_count()
     config.batch_size_per_step = int(config.batch_size / config.gradient_accumulation_steps)
@@ -1143,5 +1137,8 @@ if __name__ == '__main__':
         print(avg_fwt)
         logger.info("avg_fwt_whole")
         logger.info(avg_fwt)
-
+        print("SCKD finished")
+        logger.info(f'SAM: {config.SAM}')
+        logger.info(f'SAM Optimizer: {config.sam_optimizer}')
+        logger.info(f'decay: {config.decay}')
 
