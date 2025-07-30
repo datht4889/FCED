@@ -514,7 +514,7 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=5, type=int)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
-    parser.add_argument("--SAM", action = 'store_true')
+    parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
     parser.add_argument("--decay", default=0, type=float)
