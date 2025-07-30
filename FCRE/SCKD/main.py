@@ -855,6 +855,11 @@ if __name__ == '__main__':
     config.sam_optimizer = args.sam_optimizer
     config.rho = args.rho
     config.decay = args.decay
+
+    print("SCKD Start")
+    print(f'SAM: {config.sam}')
+    print(f'SAM Optimizer: {config.sam_optimizer}')
+    print(f'decay: {config.decay}')
     
 
     if config.task == "FewRel":
