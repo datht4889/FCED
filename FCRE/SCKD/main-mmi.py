@@ -39,7 +39,7 @@ def train_simple_model(config, encoder, dropout_layer, classifier, training_data
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
     ])
-    if config.SAM:
+    if config.sam:
         base_optimizer = optim.Adam
         optimizer = SAM(
             params=[{'params': encoder.parameters(), 'lr': 0.00001},
@@ -67,7 +67,7 @@ def train_simple_model(config, encoder, dropout_layer, classifier, training_data
             logits = classifier(reps)
             loss = criterion(logits, labels)
 
-            if not config.SAM:
+            if not config.sam:
                 losses.append(loss.item())
                 loss.backward()
                 optimizer.step()
@@ -142,7 +142,7 @@ def train_first(config, encoder, dropout_layer, classifier, training_data, epoch
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
     ])
-    if config.SAM:
+    if config.sam:
         base_optimizer = optim.Adam
         optimizer = SAM(
             params=[{'params': encoder.parameters(), 'lr': 0.00001},
@@ -185,7 +185,7 @@ def train_first(config, encoder, dropout_layer, classifier, training_data, epoch
             tri_loss = triplet_loss(anchors, positives, negatives)
             loss = loss1 + loss2 + tri_loss
 
-            if not config.SAM:
+            if not config.sam:
                 loss.backward()
                 losses.append(loss.item())
                 optimizer.step()
@@ -233,7 +233,7 @@ def train_mem_model(config, encoder, dropout_layer, classifier, training_data, e
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
     ])
-    if config.SAM:
+    if config.sam:
         base_optimizer = optim.Adam
         optimizer = SAM(
             params=[{'params': encoder.parameters(), 'lr': 0.00001},
@@ -358,7 +358,7 @@ def train_mem_model(config, encoder, dropout_layer, classifier, training_data, e
                 loss += hidden_distill_loss
             
             print(f"loss1 is {loss1.item()}, loss2 is {loss2.item()}, tri_loss is {tri_loss.item()}, infoNCE_loss is {infoNCE_loss.item()}, mlm_loss is {mlm_loss.item()}")
-            if not config.SAM:
+            if not config.sam:
                 loss.backward()
                 losses.append(loss.item())
                 optimizer.step()
@@ -483,7 +483,7 @@ def train_mem_model_mixup(config, encoder, dropout_layer, classifier, training_d
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
     ])
-    if config.SAM:
+    if config.sam:
         base_optimizer = optim.Adam
         optimizer = SAM(
             params=[{'params': encoder.parameters(), 'lr': 0.00001},
@@ -612,7 +612,7 @@ def train_mem_model_mixup(config, encoder, dropout_layer, classifier, training_d
             if not torch.isnan(loss_add2).any():
                 loss += config.loss2_factor*loss_add2
             print(f"loss1 is {loss1.item()}, loss2 is {loss2.item()}, tri_loss is {tri_loss.item()}, loss_add1 is {loss_add1.item()}, loss_add2 is {loss_add2.item()}")
-            if not config.SAM:
+            if not config.sam:
                 loss.backward()
                 losses.append(loss.item())
                 optimizer.step()
@@ -1114,12 +1114,12 @@ if __name__ == '__main__':
                 forward_acc = evaluate_strict_model(config, prev_encoder, prev_dropout_layer, classifier, test_data_1, seen_relations, map_relid2tempid)
                 forward_accs.append(forward_acc)
 
-            if config.SAM_type == 'current' : 
-                config.SAM = True
+            if config.sam_type == 'current' : 
+                config.sam = True
             train_simple_model(config, encoder, dropout_layer, classifier, train_data_for_initial, config.step1_epochs, map_relid2tempid)
             print(f"simple finished")
-            if config.SAM_type == 'current' :
-                config.SAM = False
+            if config.sam_type == 'current' :
+                config.sam = False
 
 
             temp_protos = {} # key : relation id, value : prototype
@@ -1278,7 +1278,7 @@ if __name__ == '__main__':
         print(avg_fwt)
         logger.info(f'avg_fwt_whole: {avg_fwt}')
         print("SCKD finished")
-        logger.info(f'SAM: {config.SAM}')
+        logger.info(f'SAM: {config.sam}')
         logger.info(f'SAM Optimizer: {config.sam_optimizer}')
         logger.info(f'decay: {config.decay}')
 
