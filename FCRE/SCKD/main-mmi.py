@@ -943,6 +943,14 @@ if __name__ == '__main__':
     parser.add_argument("--loss1_factor", default=0.5, type=float)
     parser.add_argument("--loss2_factor", default=0.5, type=float)
     parser.add_argument("--mixup", action = "store_true")
+
+    # SAM
+    parser.add_argument("--sam", default=True, type=bool)
+    parser.add_argument("--sam_type", default="current", type=str)
+    parser.add_argument("--sam_optimizer", default="SAM", type=str)
+    parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--decay", default=0, type=float)
+
     args = parser.parse_args()
     config = Config(args.config)
     config.step1_epochs = args.step1_epochs
@@ -957,6 +965,13 @@ if __name__ == '__main__':
     
     #sckd
     config.pattern = 'entity_marker_mask'
+
+    # SAM
+    config.sam = args.sam
+    config.sam_type = args.sam_type
+    config.sam_optimizer = args.sam_optimizer
+    config.rho = args.rho
+    config.decay = args.decay
     
 
     #--- fix lossfactor for reproduce results
