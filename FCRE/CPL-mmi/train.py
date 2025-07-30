@@ -529,6 +529,11 @@ if __name__ == '__main__':
     config.mixup_loss_2 = args.mixup_loss_2
     config.SAM = args.SAM
     config.rho = args.rho
+
+    print("CPL MMI Start")
+    print(f'SAM: {config.sam}')
+    print(f'SAM Optimizer: {config.sam_optimizer}')
+    print(f'decay: {config.decay}')
     
     print('#############params############')
     print(config.device)
