@@ -965,7 +965,7 @@ if __name__ == '__main__':
     parser.add_argument("--mixup", action = "store_true")
 
     # SAM
-    parser.add_argument("--sam", default=False, type=bool)
+    parser.add_argument("--sam", default=False, action='store_true')
     parser.add_argument("--sam_type", default="current", type=str)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
