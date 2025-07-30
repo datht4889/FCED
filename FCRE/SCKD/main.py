@@ -34,21 +34,26 @@ def train_simple_model(config, encoder, dropout_layer, classifier, training_data
     classifier.train()
     
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam([
+    train_params = [
         {'params': encoder.parameters(), 'lr': 0.00001},
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
-    ])
+    ]
+    optimizer = optim.AdamW(train_params)
     if config.sam:
-        base_optimizer = optim.Adam
-        optimizer = SAM(
-            params=[{'params': encoder.parameters(), 'lr': 0.00001},
-                    {'params': dropout_layer.parameters(), 'lr': 0.00001},
-                    {'params': classifier.parameters(), 'lr': 0.001}],
-            base_optimizer=optim.Adam,  # Pass the Adam class, not an instance
-            rho=config.rho,
-            adaptive=False
-        )
+        base_optimizer = optim.AdamW
+        if config.sam_optimizer=='SAM':
+            optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='ASAM':
+            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='ESAM':
+            optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='GCSAM':
+            optimizer = GCSAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='FriendlySAM':
+            optimizer = FriendlySAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='LookbehindASAM':
+            optimizer = LookbehindASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
     for epoch_i in range(epochs):
         losses = []
         for step, batch_data in enumerate(data_loader):
@@ -137,21 +142,26 @@ def train_mem_model(config, encoder, dropout_layer, classifier, training_data, e
     classifier.train()
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam([
+    train_params = [
         {'params': encoder.parameters(), 'lr': 0.00001},
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.0001}
-    ])
+    ]
+    optimizer = optim.AdamW(train_params)
     if config.sam:
-        base_optimizer = optim.Adam
-        optimizer = SAM(
-            params=[{'params': encoder.parameters(), 'lr': 0.00001},
-                    {'params': dropout_layer.parameters(), 'lr': 0.00001},
-                    {'params': classifier.parameters(), 'lr': 0.0001}],
-            base_optimizer=optim.Adam,  # Pass the Adam class, not an instance
-            rho=0.01,
-            adaptive=False
-        )
+        base_optimizer = optim.AdamW
+        if config.sam_optimizer=='SAM':
+            optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='ASAM':
+            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='ESAM':
+            optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='GCSAM':
+            optimizer = GCSAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='FriendlySAM':
+            optimizer = FriendlySAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='LookbehindASAM':
+            optimizer = LookbehindASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
         
     triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
     distill_criterion = nn.CosineEmbeddingLoss()
@@ -350,21 +360,27 @@ def train_mem_model_mixup(config, encoder, dropout_layer, classifier, training_d
     classifier.train()
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam([
+    train_params = [
         {'params': encoder.parameters(), 'lr': 0.00001},
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
-    ])
+    ]
+    optimizer = optim.AdamW(train_params)
     if config.sam:
-        base_optimizer = optim.Adam
-        optimizer = SAM(
-            params=[{'params': encoder.parameters(), 'lr': 0.00001},
-                    {'params': dropout_layer.parameters(), 'lr': 0.00001},
-                    {'params': classifier.parameters(), 'lr': 0.001}],
-            base_optimizer=base_optimizer,  # Pass the Adam class, not an instance
-            rho=config.rho,
-            adaptive=False
-        )
+        base_optimizer = optim.AdamW
+        if config.sam_optimizer=='SAM':
+            optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='ASAM':
+            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='ESAM':
+            optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='GCSAM':
+            optimizer = GCSAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='FriendlySAM':
+            optimizer = FriendlySAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
+        elif config.sam_optimizer=='LookbehindASAM':
+            optimizer = LookbehindASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
+        
     triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
     distill_criterion = nn.CosineEmbeddingLoss()
     neg_cos_sim_loss = NegativeCosSimLoss()
