@@ -43,17 +43,17 @@ def train_simple_model(config, encoder, dropout_layer, classifier, training_data
     if config.sam:
         base_optimizer = optim.AdamW
         if config.sam_optimizer=='SAM':
-            optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, weight_decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ASAM':
-            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, weight_decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ESAM':
-            optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, weight_decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='GCSAM':
-            optimizer = GCSAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = GCSAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, weight_decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='FriendlySAM':
-            optimizer = FriendlySAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = FriendlySAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, weight_decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='LookbehindASAM':
-            optimizer = LookbehindASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = LookbehindASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, weight_decay=config.decay, betas=(0.9, 0.999))
     for epoch_i in range(epochs):
         losses = []
         for step, batch_data in enumerate(data_loader):
