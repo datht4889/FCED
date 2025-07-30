@@ -533,7 +533,7 @@ if __name__ == '__main__':
     config.rho = args.rho
 
     print("CPL MMI Start")
-    print(f'SAM: {config.sam}')
+    print(f'SAM: {config.SAM}')
     print(f'SAM Optimizer: {config.sam_optimizer}')
     print(f'decay: {config.decay}')
     
