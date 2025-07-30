@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
 def get_data_loader_BERT(config, data, shuffle = False, drop_last = False, batch_size = None):

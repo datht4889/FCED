@@ -18,7 +18,7 @@ import os
 from mixup import mixup_data_augmentation
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
 from torch.nn.utils import clip_grad_norm_
-from sam import SAM
+from sam import *
 import logging
 import sys
 # import wandb
@@ -1103,40 +1103,40 @@ if __name__ == '__main__':
         logger.info("std_result_all_test")
         logger.info(std_result_all_test)
         # wandb.log({"std_result_all_test": std_result_all_test})
-        accuracy = []
-        temp_rel2id = [rel2id[x] for x in history_relations]
-        map_relid2tempid = {k: v for v, k in enumerate(temp_rel2id)}
-        for data in history_data:
-            accuracy.append(evaluate_strict_model(config, encoder, dropout_layer, classifier, data, history_relations, map_relid2tempid))
-        print(accuracy)
-        logger.info(accuracy)
-        bwt = 0.0
-        for k in range(len(accuracy)-1):
-            bwt += accuracy[k]-test_cur[k]
-        bwt /= len(accuracy)-1
-        bwt_whole.append(bwt)
-        fwt_whole.append(np.average(np.array(forward_accs)))
-        print("bwt_whole")
-        print(bwt_whole)
-        print("fwt_whole")
-        print(fwt_whole)
+        # accuracy = []
+        # temp_rel2id = [rel2id[x] for x in history_relations]
+        # map_relid2tempid = {k: v for v, k in enumerate(temp_rel2id)}
+        # for data in history_data:
+        #     accuracy.append(evaluate_strict_model(config, encoder, dropout_layer, classifier, data, history_relations, map_relid2tempid))
+        # print(accuracy)
+        # logger.info(accuracy)
+        # bwt = 0.0
+        # for k in range(len(accuracy)-1):
+        #     bwt += accuracy[k]-test_cur[k]
+        # bwt /= len(accuracy)-1
+        # bwt_whole.append(bwt)
+        # fwt_whole.append(np.average(np.array(forward_accs)))
+        # print("bwt_whole")
+        # print(bwt_whole)
+        # print("fwt_whole")
+        # print(fwt_whole)
         
-        logger.info("bwt_whole")
-        logger.info(bwt_whole)
-        logger.info("fwt_whole")
-        logger.info(fwt_whole)
+        # logger.info("bwt_whole")
+        # logger.info(bwt_whole)
+        # logger.info("fwt_whole")
+        # logger.info(fwt_whole)
         
-        avg_bwt = np.average(np.array(bwt_whole))
-        print("avg_bwt_whole")
-        print(avg_bwt)
+        # avg_bwt = np.average(np.array(bwt_whole))
+        # print("avg_bwt_whole")
+        # print(avg_bwt)
         
-        logger.info("avg_bwt_whole")
-        logger.info(avg_bwt)
-        avg_fwt = np.average(np.array(fwt_whole))
-        print("avg_fwt_whole")
-        print(avg_fwt)
-        logger.info("avg_fwt_whole")
-        logger.info(avg_fwt)
+        # logger.info("avg_bwt_whole")
+        # logger.info(avg_bwt)
+        # avg_fwt = np.average(np.array(fwt_whole))
+        # print("avg_fwt_whole")
+        # print(avg_fwt)
+        # logger.info("avg_fwt_whole")
+        # logger.info(avg_fwt)
         print("SCKD finished")
         logger.info(f'SAM: {config.sam}')
         logger.info(f'SAM Optimizer: {config.sam_optimizer}')
