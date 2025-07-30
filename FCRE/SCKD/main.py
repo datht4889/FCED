@@ -39,7 +39,7 @@ def train_simple_model(config, encoder, dropout_layer, classifier, training_data
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
     ])
-    if config.SAM:
+    if config.sam:
         base_optimizer = optim.Adam
         optimizer = SAM(
             params=[{'params': encoder.parameters(), 'lr': 0.00001},
@@ -67,7 +67,7 @@ def train_simple_model(config, encoder, dropout_layer, classifier, training_data
             logits = classifier(reps)
             loss = criterion(logits, labels)
 
-            if not config.SAM:
+            if not config.sam:
                 losses.append(loss.item())
                 loss.backward()
                 optimizer.step()
@@ -142,7 +142,7 @@ def train_mem_model(config, encoder, dropout_layer, classifier, training_data, e
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.0001}
     ])
-    if config.SAM:
+    if config.sam:
         base_optimizer = optim.Adam
         optimizer = SAM(
             params=[{'params': encoder.parameters(), 'lr': 0.00001},
@@ -244,7 +244,7 @@ def train_mem_model(config, encoder, dropout_layer, classifier, training_data, e
                                                              config.device))
                 loss += hidden_distill_loss
                 print("prediction_distill_loss: ", prediction_distill_loss.item(), "hidden_distill_loss: ", hidden_distill_loss.item())
-            if not config.SAM:
+            if not config.sam:
                 loss.backward()
                 losses.append(loss.item())
                 optimizer.step()
@@ -355,7 +355,7 @@ def train_mem_model_mixup(config, encoder, dropout_layer, classifier, training_d
         {'params': dropout_layer.parameters(), 'lr': 0.00001},
         {'params': classifier.parameters(), 'lr': 0.001}
     ])
-    if config.SAM:
+    if config.sam:
         base_optimizer = optim.Adam
         optimizer = SAM(
             params=[{'params': encoder.parameters(), 'lr': 0.00001},
@@ -485,7 +485,7 @@ def train_mem_model_mixup(config, encoder, dropout_layer, classifier, training_d
                 loss += config.loss1_factor*loss_add1
             if not torch.isnan(loss_add2).any():
                 loss += config.loss2_factor*loss_add2
-            if not config.SAM:
+            if not config.sam:
                 loss.backward()
                 losses.append(loss.item())
                 optimizer.step()
@@ -875,9 +875,9 @@ if __name__ == '__main__':
     
     pre = ""
     if args.mixup: pre += "mixup|"
-    if config.SAM: pre += "SAM"
+    if config.sam: pre += "SAM"
 
-    file_handler = logging.FileHandler(f'SCKD-{pre}-logs-task_{config.task}-lossfactor_{config.loss1_factor}_{config.loss1_factor}-rho_{config.rho}-SAM_type_{config.SAM_type}.log')
+    file_handler = logging.FileHandler(f'SCKD-{pre}-logs-task_{config.task}-lossfactor_{config.loss1_factor}_{config.loss1_factor}-rho_{config.rho}-SAM_type_{config.sam_type}.log')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
@@ -960,12 +960,12 @@ if __name__ == '__main__':
                 forward_acc = evaluate_strict_model(config, prev_encoder, prev_dropout_layer, classifier, test_data_1, seen_relations, map_relid2tempid)
                 forward_accs.append(forward_acc)
 
-            if config.SAM_type == 'current':
-                config.SAM = True
+            if config.sam_type == 'current':
+                config.sam = True
             train_simple_model(config, encoder, dropout_layer, classifier, train_data_for_initial, config.step1_epochs, map_relid2tempid)
             print(f"simple finished")
-            if config.SAM_type == 'current':
-                config.SAM = False
+            if config.sam_type == 'current':
+                config.sam = False
             logger.info(f"simple finished")
 
 
@@ -1138,7 +1138,7 @@ if __name__ == '__main__':
         logger.info("avg_fwt_whole")
         logger.info(avg_fwt)
         print("SCKD finished")
-        logger.info(f'SAM: {config.SAM}')
+        logger.info(f'SAM: {config.sam}')
         logger.info(f'SAM Optimizer: {config.sam_optimizer}')
         logger.info(f'decay: {config.decay}')
 
