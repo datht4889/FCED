@@ -875,7 +875,7 @@ if __name__ == '__main__':
     
     pre = ""
     if args.mixup: pre += "mixup|"
-    if args.SAM: pre += "SAM"
+    if config.SAM: pre += "SAM"
 
     file_handler = logging.FileHandler(f'SCKD-{pre}-logs-task_{config.task}-lossfactor_{config.loss1_factor}_{config.loss1_factor}-rho_{config.rho}-SAM_type_{config.SAM_type}.log')
     file_handler.setLevel(logging.DEBUG)
