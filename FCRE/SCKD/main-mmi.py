@@ -153,7 +153,7 @@ def train_first(config, encoder, dropout_layer, classifier, training_data, epoch
         if config.sam_optimizer=='SAM':
             optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ASAM':
-            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ESAM':
             optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='GCSAM':
@@ -249,7 +249,7 @@ def train_mem_model(config, encoder, dropout_layer, classifier, training_data, e
         if config.sam_optimizer=='SAM':
             optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ASAM':
-            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ESAM':
             optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='GCSAM':
@@ -504,7 +504,7 @@ def train_mem_model_mixup(config, encoder, dropout_layer, classifier, training_d
         if config.sam_optimizer=='SAM':
             optimizer = SAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ASAM':
-            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
+            optimizer = ASAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='ESAM':
             optimizer = ESAM(params=train_params, base_optimizer=base_optimizer, rho=config.rho, adaptive=True, decay=config.decay, betas=(0.9, 0.999))
         elif config.sam_optimizer=='GCSAM':
