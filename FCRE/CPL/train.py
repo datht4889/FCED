@@ -470,7 +470,11 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
-    
+    parser.add_argument("--SAM", action = 'store_true', default=False)
+    parser.add_argument("--sam_optimizer", default="SAM", type=str)
+    parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--decay", default=0, type=float)
+
     args = parser.parse_args()
     if args.use_llm:
         config = Config('config_llm.ini')
@@ -484,6 +488,16 @@ if __name__ == '__main__':
     config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
+
+    config.SAM = args.SAM
+    config.rho = args.rho
+    config.sam_optimizer = args.sam_optimizer
+    config.decay = args.decay
+
+    print("CPL Start")
+    print(f'SAM: {config.SAM}')
+    print(f'SAM Optimizer: {config.sam_optimizer}')
+    print(f'decay: {config.decay}')
 
     # config 
     print('#############params############')

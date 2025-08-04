@@ -529,8 +529,12 @@ if __name__ == '__main__':
     config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
+
     config.SAM = args.SAM
     config.rho = args.rho
+    config.sam_optimizer = args.sam_optimizer
+    config.decay = args.decay
+    
 
     print("CPL MMI Start")
     print(f'SAM: {config.SAM}')
