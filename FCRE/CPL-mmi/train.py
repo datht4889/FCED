@@ -8,9 +8,10 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
 from transformers import set_seed
-from config import Config
-# import wandb
+import os
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
+from config import Config
 from sampler import data_sampler_CFRL
 from data_loader import get_data_loader_BERT
 from utils import Moment, gen_data

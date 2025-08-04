@@ -11,9 +11,10 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
 from transformers import set_seed
+import os
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+
 from config import Config
-
-
 from sampler_bert_llm import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM, get_data_loader_BERT
 from utils_llm import Moment_LLM, gen_data
