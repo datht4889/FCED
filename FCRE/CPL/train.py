@@ -532,6 +532,7 @@ if __name__ == '__main__':
 
     print("CPL Start")
     print(f'mixup: {config.mixup}')
+    print(f'base_optimizer: {config.base_optimizer}')
     print(f'SAM: {config.SAM}')
     print(f'SAM Optimizer: {config.sam_optimizer}')
     print(f'decay: {config.decay}')
