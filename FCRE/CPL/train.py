@@ -499,7 +499,7 @@ if __name__ == '__main__':
     parser.add_argument("--use_llm", action = 'store_true', default=False)
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
-    parser.add_argument("--mixup", action = 'store_true', default=True)
+    parser.add_argument("--mixup", action = 'store_true')
     parser.add_argument("--epoch", default=8, type=int) # 8, 10
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
