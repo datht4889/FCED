@@ -7,6 +7,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
+from transformers import set_seed
 from config import Config
 # import wandb
 
@@ -607,10 +608,7 @@ if __name__ == '__main__':
     logger.info('#############params############')
 
     # seed 
-    random.seed(config.seed) 
-    np.random.seed(config.seed)
-    torch.manual_seed(config.seed)
-    torch.cuda.manual_seed_all(config.seed)   
+    set_seed(config.seed, deterministic=True)
     base_seed = config.seed
 
     acc_list = []
