@@ -115,12 +115,19 @@ class Manager(object):
 
     def train_model(self, encoder, training_data, is_memory=False):
         data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
-        optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+        if self.config.base_optimizer == 'Adam':
+            optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
+        elif self.config.base_optimizer == 'AdamW':
+            optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
             # base_optimizer = optim.AdamW
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
 
-            base_optimizer = optim.AdamW
+            if self.config.base_optimizer == 'Adam':
+                base_optimizer = optim.Adam
+            elif self.config.base_optimizer == 'AdamW':
+                base_optimizer = optim.AdamW
+
             if self.config.sam_optimizer=='SAM':
                 optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
             elif self.config.sam_optimizer=='ASAM':
@@ -225,11 +232,20 @@ class Manager(object):
         print('')           
     def train_model_mixup(self, encoder, training_data):
         data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
-        optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+
+        if self.config.base_optimizer == 'Adam':
+            optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
+        elif self.config.base_optimizer == 'AdamW':
+            optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
             # base_optimizer = optim.AdamW
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-            base_optimizer = optim.AdamW
+            
+            if self.config.base_optimizer == 'Adam':
+                base_optimizer = optim.Adam
+            elif self.config.base_optimizer == 'AdamW':
+                base_optimizer = optim.AdamW
+
             if self.config.sam_optimizer=='SAM':
                 optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
             elif self.config.sam_optimizer=='ASAM':
@@ -516,6 +532,7 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=5, type=int)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
+    parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
@@ -532,6 +549,7 @@ if __name__ == '__main__':
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
 
+    config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
     config.rho = args.rho
     config.sam_optimizer = args.sam_optimizer
