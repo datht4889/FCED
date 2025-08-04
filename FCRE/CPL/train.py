@@ -507,6 +507,7 @@ if __name__ == '__main__':
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
+    parser.add_argument("--SAM_type", default="current", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
     parser.add_argument("--decay", default=0, type=float)
 
@@ -526,6 +527,7 @@ if __name__ == '__main__':
 
     config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
+    config.SAM_type = args.SAM_type
     config.rho = args.rho
     config.sam_optimizer = args.sam_optimizer
     config.decay = args.decay
@@ -534,6 +536,7 @@ if __name__ == '__main__':
     print(f'mixup: {config.mixup}')
     print(f'base_optimizer: {config.base_optimizer}')
     print(f'SAM: {config.SAM}')
+    print(f'SAM_type: {config.SAM_type}')
     print(f'SAM Optimizer: {config.sam_optimizer}')
     print(f'decay: {config.decay}')
 
