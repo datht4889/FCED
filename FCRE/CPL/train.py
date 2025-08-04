@@ -495,6 +495,7 @@ if __name__ == '__main__':
     config.decay = args.decay
 
     print("CPL Start")
+    print(f'mixup: {config.mixup}')
     print(f'SAM: {config.SAM}')
     print(f'SAM Optimizer: {config.sam_optimizer}')
     print(f'decay: {config.decay}')
