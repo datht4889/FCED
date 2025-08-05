@@ -533,6 +533,7 @@ if __name__ == '__main__':
     config.decay = args.decay
 
     print("CPL Start")
+    print(f'task_name: {config.task_name}')
     print(f'mixup: {config.mixup}')
     print(f'base_optimizer: {config.base_optimizer}')
     print(f'SAM: {config.SAM}')
@@ -564,7 +565,7 @@ if __name__ == '__main__':
             config.training_data = './data/CFRLFewRel/CFRLdata_10_100_10_10/train_0.txt'
             config.valid_data = './data/CFRLFewRel/CFRLdata_10_100_10_10/valid_0.txt'
             config.test_data = './data/CFRLFewRel/CFRLdata_10_100_10_10/test_0.txt'
-    else:
+    elif config.task_name == 'Tacred':
         config.rel_index = './data/CFRLTacred/rel_index.npy'
         config.relation_name = './data/CFRLTacred/relation_name.txt'
         config.relation_description = './data/CFRLTacred/relation_description_raw.txt'
