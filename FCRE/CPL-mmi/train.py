@@ -629,7 +629,7 @@ if __name__ == '__main__':
     logger.info('#############params############')
 
     # seed 
-    set_seed(config.seed, deterministic=True)
+    set_seed(config.seed)
     base_seed = config.seed
 
     acc_list = []

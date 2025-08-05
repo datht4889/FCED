@@ -103,7 +103,7 @@ class Manager(object):
 
         mem_set = []
         mem_feas = []
-        for k in range(num_clusters):
+        for k in range(num_clusters): # Select 'num_clusters' samples closest to the centroid for replay buffer
             sel_index = np.argmin(distances[:, k])
             sample = dataset[sel_index]
             mem_set.append(sample)
