@@ -516,6 +516,7 @@ if __name__ == '__main__':
         config = Config('config_llm.ini')
     else:
         config = Config('config.ini')
+    config.task_name = args.task_name
     config.use_llm = args.use_llm
     config.num_k = args.num_k
     config.num_gen = args.num_gen
