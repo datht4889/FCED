@@ -214,7 +214,18 @@ class EncodingModel(nn.Module):
             return concerate_h_t
 
     def set_history(self):
-        self.history = {"state_dict": self.state_dict()}
+        """Store the current model state for knowledge distillation"""
+        # Clean up old_model before saving
+        if hasattr(self, 'old_model'):
+            self.cleanup_old_model()
+        
+        # Get state_dict and filter out old_model keys
+        main_state_dict = {k: v for k, v in self.state_dict().items() 
+                        if not k.startswith('old_model.')}
+        
+        self.history = {
+            "state_dict": main_state_dict,
+        }
     
     def get_old_model(self):
         if self.history is None:
@@ -224,3 +235,10 @@ class EncodingModel(nn.Module):
         self.old_model.eval()
         self.old_model.to(self.config.device)
         return self.old_model
+    
+    def cleanup_old_model(self):
+        """Clean up the old model to free memory"""
+        if hasattr(self, 'old_model') and self.old_model is not None:
+            del self.old_model
+            self.old_model = None
+            torch.cuda.empty_cache() if torch.cuda.is_available() else None
