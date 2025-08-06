@@ -10,6 +10,7 @@ class EncodingModel(nn.Module):
         self.config = config
         if config.model == 'bert':
             self.bert_config = BertConfig.from_pretrained(config.bert_path)
+            self.bert_config.attn_implementation = 'eager'
             self.bert_config.deterministic_flash_attn = True
             self.encoder = BertModel.from_pretrained(config.bert_path, config=self.bert_config).to(config.device)
             # self.lm_head = BertForMaskedLM.from_pretrained(config.bert_path).to(config.device).cls
