@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from transformers import BertModel
+from transformers import BertModel, BertConfig
 from transformers import RobertaModel
 from transformers import BertForMaskedLM
 class EncodingModel(nn.Module):
@@ -9,7 +9,9 @@ class EncodingModel(nn.Module):
         nn.Module.__init__(self)
         self.config = config
         if config.model == 'bert':
-            self.encoder = BertModel.from_pretrained(config.bert_path).to(config.device)
+            self.bert_config = BertConfig.from_pretrained(config.bert_path)
+            self.bert_config.deterministic_flash_attn = True
+            self.encoder = BertModel.from_pretrained(config.bert_path, config=self.bert_config).to(config.device)
             # self.lm_head = BertForMaskedLM.from_pretrained(config.bert_path).to(config.device).cls
         elif config.model == 'roberta':
             self.encoder = RobertaModel.from_pretrained(config.roberta_path).to(config.device)
