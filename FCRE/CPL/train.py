@@ -21,12 +21,11 @@ from utils_llm import Moment_LLM, gen_data
 from utils import Moment, gen_data
 from encoder_llm import EncodingModel_LLM2vec
 from encoder import EncodingModel
-from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
+from add_loss import *
 from transformers import BertTokenizer
 from mixup import mixup_data_augmentation_llm, mixup_data_augmentation
 from sam import *
 import logging
-
 
 class Manager(object):
     def __init__(self, config) -> None:
@@ -115,7 +114,7 @@ class Manager(object):
         return mem_set, mem_feas
         # return mem_set, features, rel_proto
         
-    def train_model(self, encoder, training_data, is_memory=False):
+    def train_model(self, encoder, old_encoder, training_data, is_memory=False):
         if self.config.use_llm:
             data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         else:
@@ -149,6 +148,9 @@ class Manager(object):
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
+        if is_memory:
+            angle_loss_fn = RKdAngle()
+
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
                 if self.config.use_llm:
@@ -169,7 +171,12 @@ class Manager(object):
                         hidden = encoder(instance['input'])
                     else:
                         hidden = encoder(instance)
+
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
+                    if is_memory:
+                        old_hidden = old_encoder(instance)
+                        angle_loss = angle_loss_fn(hidden, old_hidden)
+                        loss = loss + angle_loss * 0.25
                     loss.backward()
                     optimizer.second_step(zero_grad=True)
                     # update moment
@@ -392,6 +399,7 @@ class Manager(object):
             encoder = EncodingModel_LLM2vec(self.config)
         else:
             encoder = EncodingModel(self.config)
+        old_encoder = None
 
         # step is continual task number
         cur_acc, total_acc = [], []
@@ -400,6 +408,7 @@ class Manager(object):
         data_generation = []
         
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
+
         for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
             
@@ -418,7 +427,7 @@ class Manager(object):
             if self.config.SAM_type == 'full' :
                 self.config.SAM = True
             self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
-            self.train_model(encoder, training_data_initialize)
+            self.train_model(encoder, old_encoder, training_data_initialize)
             if self.config.SAM_type == 'current':
                 self.config.SAM = False
 
@@ -439,6 +448,7 @@ class Manager(object):
                     
             # Train memory
             if step > 0:
+                old_encoder = encoder.get_old_model()
                 memory_data_initialize = []
                 for rel in seen_relations:
                     memory_data_initialize += memory_samples[rel]
@@ -454,8 +464,10 @@ class Manager(object):
                     self.moment.init_moment_mixup(encoder, mixup_samples, is_memory=True) 
                     self.train_model_mixup(encoder, mixup_samples)
                 self.moment.init_moment(encoder, memory_data_initialize, is_memory=True)
-                self.train_model(encoder, memory_data_initialize, is_memory=True)
+                self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True)
                 
+            # Save the current model state for future tasks
+            encoder.set_history() 
 
             # Update proto
             seen_proto = []  
@@ -495,7 +507,7 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task_name", default="FewRel", type=str)
+    parser.add_argument("--task_name", default="Tacred", type=str)
     parser.add_argument("--use_llm", action = 'store_true', default=False)
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 

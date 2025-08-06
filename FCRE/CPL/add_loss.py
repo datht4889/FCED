@@ -972,3 +972,66 @@ class NegativeCosSimLoss(nn.Module):
         exp_sim = torch.exp(cos_sim)
         loss = torch.log((1 + exp_sim)).mean()
         return loss
+    
+
+class RKdAngle(nn.Module):
+    def forward(self, student, teacher):
+        # N x C
+        # N x N x C
+
+        with torch.no_grad():
+            td = (teacher.unsqueeze(0) - teacher.unsqueeze(1))
+            norm_td = F.normalize(td, p=2, dim=2)
+            t_angle = torch.bmm(norm_td, norm_td.transpose(1, 2)).view(-1)
+
+        sd = (student.unsqueeze(0) - student.unsqueeze(1))
+        norm_sd = F.normalize(sd, p=2, dim=2)
+        s_angle = torch.bmm(norm_sd, norm_sd.transpose(1, 2)).view(-1)
+
+        loss = F.smooth_l1_loss(s_angle, t_angle, reduction='elementwise_mean')
+        return loss
+
+def pdist(e, squared=False, eps=1e-12):
+    e_square = e.pow(2).sum(dim=1)
+    prod = e @ e.t()
+    res = (e_square.unsqueeze(1) + e_square.unsqueeze(0) - 2 * prod).clamp(min=eps)
+
+    if not squared:
+        res = res.sqrt()
+
+    res = res.clone()
+    res[range(len(e)), range(len(e))] = 0
+    return res
+
+class RkdDistance(nn.Module):
+    def forward(self, student, teacher):
+        with torch.no_grad():
+            t_d = pdist(teacher, squared=False)
+            mean_td = t_d[t_d>0].mean()
+            t_d = t_d / mean_td
+
+        d = pdist(student, squared=False)
+        mean_d = d[d>0].mean()
+        d = d / mean_d
+
+        loss = F.smooth_l1_loss(d, t_d, reduction='elementwise_mean')
+        return loss
+    
+if __name__ == "__main__":
+    # Example usage
+    import torch
+    from torch import nn
+
+    embeddings_a = torch.randn(10, 768)
+    embeddings_b = torch.randn(10, 768)
+    labels = torch.randint(0, 2, (10,))
+
+    # Initialize the loss function
+    angle_loss_fn = RKdAngle()
+    distance_loss_fn = RkdDistance()
+
+    # Compute the loss
+    angle_loss = angle_loss_fn(embeddings_a, embeddings_b)
+    distance_loss = distance_loss_fn(embeddings_a, embeddings_b)
+    print("Angle Loss:", angle_loss.item())
+    print("Distance Loss:", distance_loss.item())

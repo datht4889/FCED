@@ -213,3 +213,14 @@ class EncodingModel(nn.Module):
             concerate_h_t = (h_state + t_state) / 2 # (b, h)
             return concerate_h_t
 
+    def set_history(self):
+        self.history = {"state_dict": self.state_dict()}
+    
+    def get_old_model(self):
+        if self.history is None:
+            raise ValueError("No history saved. Call set_history() before training on new tasks.")
+        self.old_model = EncodingModel(self.config)
+        self.old_model.load_state_dict(self.history["state_dict"])
+        self.old_model.eval()
+        self.old_model.to(self.config.device)
+        return self.old_model
