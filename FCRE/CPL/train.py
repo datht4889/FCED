@@ -150,6 +150,7 @@ class Manager(object):
 
         if is_memory:
             angle_loss_fn = RKdAngle()
+            distance_loss_fn = RkdDistance()
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
@@ -159,9 +160,9 @@ class Manager(object):
                     hidden = encoder(instance)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
                 if is_memory:
-                        old_hidden = old_encoder(instance)
-                        angle_loss = angle_loss_fn(hidden, old_hidden)
-                        loss = loss + angle_loss * 0.25  
+                    old_hidden = old_encoder(instance)
+                    angle_loss = angle_loss_fn(hidden, old_hidden)
+                    loss = loss + angle_loss * 0.25  
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
