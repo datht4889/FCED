@@ -1018,6 +1018,11 @@ class RkdDistance(nn.Module):
         loss = F.smooth_l1_loss(d, t_d, reduction='elementwise_mean')
         return loss
     
+class WKDLoss(nn.Module):
+    def forward(self, student, teacher):
+        pass
+
+    
 if __name__ == "__main__":
     # Example usage
     import torch
