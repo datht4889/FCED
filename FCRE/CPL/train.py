@@ -157,7 +157,11 @@ class Manager(object):
                     hidden = encoder(instance['input'])
                 else:
                     hidden = encoder(instance)
-                loss = self.moment.contrastive_loss(hidden, labels, is_memory)    
+                loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
+                if is_memory:
+                        old_hidden = old_encoder(instance)
+                        angle_loss = angle_loss_fn(hidden, old_hidden)
+                        loss = loss + angle_loss * 0.25  
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
