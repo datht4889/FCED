@@ -973,6 +973,7 @@ class NegativeCosSimLoss(nn.Module):
         loss = torch.log((1 + exp_sim)).mean()
         return loss
     
+### Distillation Loss ###
 
 class RKdAngle(nn.Module):
     def forward(self, student, teacher):

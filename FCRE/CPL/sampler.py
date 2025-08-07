@@ -2,7 +2,7 @@ import pickle
 import os 
 import random
 import numpy as np
-from transformers import BertTokenizer, RobertaTokenizer, set_seed
+from transformers import BertTokenizer, RobertaTokenizer, enable_full_determinism
 
 class data_sampler_CFRL(object):
     def __init__(self, config=None, seed=None):
@@ -80,7 +80,8 @@ class data_sampler_CFRL(object):
     def set_seed(self, seed):
         self.seed = seed
         if self.seed != None:
-            set_seed(self.seed, deterministic=True)
+            # random.seed(self.seed)
+            enable_full_determinism(self.seed)
         self.shuffle_index_old = list(range(self.task_length - 1))
         random.shuffle(self.shuffle_index_old)
         self.shuffle_index_old = np.argsort(self.shuffle_index_old)
@@ -427,7 +428,8 @@ if __name__ == "__main__":
     sampler = data_sampler_CFRL(config, seed=42)
     for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
-        print(training_data.keys())
+        # print(training_data.keys())
+        print(seen_relations)
 
 # dict_keys(['person countries of residence', 'organization top members employees', 'organization member of', 'person origin', 'person title', 'organization country of headquarters'])
 # dict_keys(['organization subsidiaries', 'organization parents', 'organization alternate names', 'organization city of headquarters', 'person siblings'])

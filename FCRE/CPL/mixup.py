@@ -2,7 +2,9 @@ import random
 import numpy as np
 from itertools import combinations
 from collections import defaultdict
-random.seed(42)
+from transformers import enable_full_determinism
+# random.seed(42)
+enable_full_determinism(42)
 
 
 # def mixup_data_augmentation(sample_list, sep_token_id=102, pad_token_id=0, max_len=512):
