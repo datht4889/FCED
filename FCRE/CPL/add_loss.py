@@ -1022,6 +1022,103 @@ class WKDLoss(nn.Module):
     def forward(self, student, teacher):
         pass
 
+class OFA(nn.Module):
+    def __init__(self, eps: float = 1.0, temperature: float = 1.0):
+        super().__init__()
+        self.eps = eps
+        self.temperature = temperature
+
+    def forward(
+        self,
+        hidden_student: torch.Tensor,  # [B, D]
+        hidden_teacher: torch.Tensor,  # [B, D]
+        labels: torch.Tensor           # [B]
+    ) -> torch.Tensor:
+        # Normalize for cosine similarity stability
+        hidden_student = F.normalize(hidden_student, p=2, dim=-1)
+        hidden_teacher = F.normalize(hidden_teacher, p=2, dim=-1)
+
+        # Similarity logits from embeddings
+        logits_student = torch.matmul(hidden_student, hidden_student.t()) / self.temperature
+        logits_teacher = torch.matmul(hidden_teacher, hidden_teacher.t()) / self.temperature
+
+        # Probability distributions
+        pred_student = F.softmax(logits_student, dim=1)
+        pred_teacher = F.softmax(logits_teacher, dim=1)
+
+        # Mask for same-label pairs
+        target_mask = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
+
+        # Loss computation
+        prod = (pred_teacher + target_mask) ** self.eps
+        loss_matrix = - (prod - target_mask) * torch.log(pred_student + 1e-12)
+        loss = loss_matrix.sum(dim=-1).mean()
+
+        return loss
+    
+def _get_gt_mask(logits, target):
+    target = target.reshape(-1)
+    mask = torch.zeros_like(logits).scatter_(1, target.unsqueeze(1), 1).bool()
+    return mask
+
+def _get_other_mask(logits, target):
+    target = target.reshape(-1)
+    mask = torch.ones_like(logits).scatter_(1, target.unsqueeze(1), 0).bool()
+    return mask
+
+def cat_mask(t, mask1, mask2):
+    t1 = (t * mask1).sum(dim=1, keepdims=True)
+    t2 = (t * mask2).sum(dim=1, keepdims=True)
+    return torch.cat([t1, t2], dim=1)
+
+class DKD(nn.Module):
+    """
+    Decoupled Knowledge Distillation loss using hidden embeddings.
+    Converts hidden embeddings into similarity logits before DKD computation.
+    """
+    def __init__(self, alpha=1.0, beta=1.0, temperature=1.0, normalize=True):
+        super().__init__()
+        self.alpha = alpha
+        self.beta = beta
+        self.temperature = temperature
+        self.normalize = normalize
+
+    def forward(self, hidden_student, hidden_teacher, labels):
+        if self.normalize:
+            hidden_student = F.normalize(hidden_student, dim=-1)
+            hidden_teacher = F.normalize(hidden_teacher, dim=-1)
+
+        # Convert embeddings to similarity logits
+        logits_student = torch.matmul(hidden_student, hidden_student.T)
+        logits_teacher = torch.matmul(hidden_teacher, hidden_teacher.T)
+
+        # Apply DKD loss with generated logits
+        gt_mask = _get_gt_mask(logits_student, labels)
+        other_mask = _get_other_mask(logits_student, labels)
+
+        pred_student = F.softmax(logits_student / self.temperature, dim=1)
+        pred_teacher = F.softmax(logits_teacher / self.temperature, dim=1)
+
+        pred_student = cat_mask(pred_student, gt_mask, other_mask)
+        pred_teacher = cat_mask(pred_teacher, gt_mask, other_mask)
+
+        log_pred_student = torch.log(pred_student)
+        tckd_loss = F.kl_div(
+            log_pred_student, pred_teacher, reduction='batchmean'
+        ) * (self.temperature ** 2)
+
+        pred_teacher_part2 = F.softmax(
+            logits_teacher / self.temperature - 1000.0 * gt_mask, dim=1
+        )
+        log_pred_student_part2 = F.log_softmax(
+            logits_student / self.temperature - 1000.0 * gt_mask, dim=1
+        )
+
+        nckd_loss = F.kl_div(
+            log_pred_student_part2, pred_teacher_part2, reduction='batchmean'
+        ) * (self.temperature ** 2)
+
+        return self.alpha * tckd_loss + self.beta * nckd_loss
     
 if __name__ == "__main__":
     # Example usage
@@ -1033,11 +1130,11 @@ if __name__ == "__main__":
     labels = torch.randint(0, 2, (10,))
 
     # Initialize the loss function
-    angle_loss_fn = RKdAngle()
-    distance_loss_fn = RkdDistance()
+    loss_fn1 = OFA()
+    loss_fn2 = DKD()
 
     # Compute the loss
-    angle_loss = angle_loss_fn(embeddings_a, embeddings_b)
-    distance_loss = distance_loss_fn(embeddings_a, embeddings_b)
-    print("Angle Loss:", angle_loss.item())
-    print("Distance Loss:", distance_loss.item())
+    loss1 = loss_fn1(embeddings_a, embeddings_b, labels)
+    loss2 = loss_fn2(embeddings_a, embeddings_b, labels)
+    print("Loss 1:", loss1.item())
+    print("Loss 2:", loss2.item())
