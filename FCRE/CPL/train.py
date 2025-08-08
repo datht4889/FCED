@@ -156,9 +156,6 @@ class Manager(object):
                 else:
                     hidden = encoder(instance)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)   
-                print("-"*50)
-                print(loss)
-                print("-"*50)
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
