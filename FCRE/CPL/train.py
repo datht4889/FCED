@@ -10,7 +10,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
-from transformers import set_seed
+from transformers import set_seed, enable_full_determinism
 import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
@@ -611,7 +611,7 @@ if __name__ == '__main__':
 
     
     # seed 
-    set_seed(config.seed, deterministic=True)
+    enable_full_determinism(config.seed)
     base_seed = config.seed
 
     acc_list = []

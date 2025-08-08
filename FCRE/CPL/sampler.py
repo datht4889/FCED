@@ -2,7 +2,7 @@ import pickle
 import os 
 import random
 import numpy as np
-from transformers import BertTokenizer, RobertaTokenizer
+from transformers import BertTokenizer, RobertaTokenizer, enable_full_determinism
 
 class data_sampler_CFRL(object):
     def __init__(self, config=None, seed=None):
@@ -80,7 +80,8 @@ class data_sampler_CFRL(object):
     def set_seed(self, seed):
         self.seed = seed
         if self.seed != None:
-            random.seed(self.seed)
+            # random.seed(self.seed)
+            enable_full_determinism(self.seed)
         self.shuffle_index_old = list(range(self.task_length - 1))
         random.shuffle(self.shuffle_index_old)
         self.shuffle_index_old = np.argsort(self.shuffle_index_old)
