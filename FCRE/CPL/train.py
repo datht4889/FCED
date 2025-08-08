@@ -147,9 +147,14 @@ class Manager(object):
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
-        if is_memory:
-            rkd_angle_loss_fn = RKdAngle()
-            rkd_distance_loss_fn = RkdDistance()
+        if is_memory and self.config.distill and self.config.distill_type != 'none':
+            if self.config.distill_type == 'RKD':
+                rkd_angle_loss_fn = RKdAngle()
+                rkd_distance_loss_fn = RkdDistance()
+            elif self.config.distill_type == 'DKD':
+                distill_loss_fn = DKD()
+            elif self.config.distill_type == 'OFA':
+                distill_loss_fn = OFA()
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
@@ -158,11 +163,15 @@ class Manager(object):
                 else:
                     hidden = encoder(instance)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
-                if is_memory:
+                if is_memory and self.config.distill and self.config.distill_type != 'none':
                     old_hidden = old_encoder(instance)
-                    rkd_angle_loss = rkd_angle_loss_fn(hidden, old_hidden)
-                    rkd_distance_loss = rkd_distance_loss_fn(hidden, old_hidden)
-                    loss = loss + rkd_angle_loss * 0.25 + rkd_distance_loss * 0.25
+                    if self.config.distill_type == 'RKD':
+                        rkd_angle_loss = rkd_angle_loss_fn(hidden, old_hidden)
+                        rkd_distance_loss = rkd_distance_loss_fn(hidden, old_hidden)
+                        loss = loss + rkd_angle_loss * self.config.distill_alpha + rkd_distance_loss * self.config.distill_alpha
+                    elif self.config.distill_type == 'DKD' or self.config.distill_type == 'OFA':
+                        distill_loss = distill_loss_fn(hidden, old_hidden, labels)
+                        loss = loss + distill_loss * self.config.distill_alpha
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
@@ -178,11 +187,17 @@ class Manager(object):
                         hidden = encoder(instance)
 
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
-                    if is_memory:
+
+                    if is_memory and self.config.distill and self.config.distill_type != 'none':
                         old_hidden = old_encoder(instance)
-                        rkd_angle_loss = rkd_angle_loss_fn(hidden, old_hidden)
-                        rkd_distance_loss = rkd_distance_loss_fn(hidden, old_hidden)
-                        loss = loss + rkd_angle_loss * 0.25 + rkd_distance_loss * 0.25
+                        if self.config.distill_type == 'RKD':
+                            rkd_angle_loss = rkd_angle_loss_fn(hidden, old_hidden)
+                            rkd_distance_loss = rkd_distance_loss_fn(hidden, old_hidden)
+                            loss = loss + rkd_angle_loss * self.config.distill_alpha + rkd_distance_loss * self.config.distill_alpha
+                        elif self.config.distill_type == 'DKD' or self.config.distill_type == 'OFA':
+                            distill_loss = distill_loss_fn(hidden, old_hidden, labels)
+                            loss = loss + distill_loss * self.config.distill_alpha
+                            
                     loss.backward()
                     optimizer.second_step(zero_grad=True)
                     # update moment
@@ -523,12 +538,17 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
+    # SAM
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--SAM_type", default="current", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
     parser.add_argument("--decay", default=0, type=float)
+    # Distillation
+    parser.add_argument("--distill", action='store_true', default=False)
+    parser.add_argument("--distill_type", default="none", type=str)
+    parser.add_argument("--distill_alpha", default=0.25, type=float)
 
     args = parser.parse_args()
     if args.use_llm:
@@ -552,6 +572,10 @@ if __name__ == '__main__':
     config.sam_optimizer = args.sam_optimizer
     config.decay = args.decay
 
+    config.distill = args.distill
+    config.distill_type = args.distill_type
+    config.distill_alpha = args.distill_alpha
+
     print("CPL Start")
     print(f'task_name: {config.task_name}')
     print(f'mixup: {config.mixup}')
@@ -560,6 +584,9 @@ if __name__ == '__main__':
     print(f'SAM_type: {config.SAM_type}')
     print(f'SAM Optimizer: {config.sam_optimizer}')
     print(f'decay: {config.decay}')
+    print(f'Distillation: {config.distill}')
+    print(f'Distillation type: {config.distill_type}')
+    print(f'Distillation alpha: {config.distill_alpha}')
 
     # config 
     print('#############params############')
