@@ -392,6 +392,7 @@ class Manager(object):
 
 
     def train(self):
+        enable_full_determinism(config.seed)
         # sampler 
         sampler = data_sampler_CFRL(config=self.config, seed=self.config.seed)
         print('prepared data!')
@@ -635,6 +636,7 @@ if __name__ == '__main__':
     acc_list = []
     for i in range(config.total_round):
         config.seed = base_seed + i * 100
+        enable_full_determinism(config.seed)
         print('--------Round ', i)
         print('seed: ', config.seed)
         logger.info(f"--------Round {i}")
