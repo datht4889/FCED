@@ -1023,10 +1023,11 @@ class WKDLoss(nn.Module):
         pass
 
 class OFA(nn.Module):
-    def __init__(self, eps: float = 1.0, temperature: float = 1.0):
+    def __init__(self, eps: float = 1.0, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()
         self.eps = eps
         self.temperature = temperature
+        self.device = device
 
     def forward(
         self,
@@ -1034,6 +1035,11 @@ class OFA(nn.Module):
         hidden_teacher: torch.Tensor,  # [B, D]
         labels: torch.Tensor           # [B]
     ) -> torch.Tensor:
+        # convert to cuda
+        hidden_student = hidden_student.to(self.device)
+        hidden_teacher = hidden_teacher.to(self.device)
+        labels = labels.to(self.device)
+        
         # Normalize for cosine similarity stability
         hidden_student = F.normalize(hidden_student, p=2, dim=-1)
         hidden_teacher = F.normalize(hidden_teacher, p=2, dim=-1)
@@ -1076,14 +1082,20 @@ class DKD(nn.Module):
     Decoupled Knowledge Distillation loss using hidden embeddings.
     Converts hidden embeddings into similarity logits before DKD computation.
     """
-    def __init__(self, alpha=1.0, beta=1.0, temperature=1.0, normalize=True):
+    def __init__(self, alpha: float = 1.0, beta: float = 1.0, temperature: float = 1.0, normalize: bool = True, device: str = 'cpu'):
         super().__init__()
         self.alpha = alpha
         self.beta = beta
         self.temperature = temperature
         self.normalize = normalize
+        self.device = device
 
     def forward(self, hidden_student, hidden_teacher, labels):
+        # convert to cuda
+        hidden_student = hidden_student.to(self.device)
+        hidden_teacher = hidden_teacher.to(self.device)
+        labels = labels.to(self.device)
+
         if self.normalize:
             hidden_student = F.normalize(hidden_student, dim=-1)
             hidden_teacher = F.normalize(hidden_teacher, dim=-1)
