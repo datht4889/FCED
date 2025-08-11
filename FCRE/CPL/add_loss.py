@@ -1017,12 +1017,16 @@ class RkdDistance(nn.Module):
 
         loss = F.smooth_l1_loss(d, t_d, reduction='elementwise_mean')
         return loss
-    
-class WKDLoss(nn.Module):
-    def forward(self, student, teacher):
-        pass
 
-class OFA(nn.Module):
+class Distiller(nn.Module):
+    def remap_labels_to_local(self, labels):
+        unique_classes = torch.unique(labels)
+        mapping = {int(cls): idx for idx, cls in enumerate(unique_classes)}
+        remapped_labels = torch.tensor([mapping[int(lbl)] for lbl in labels.tolist()],
+                                    dtype=torch.long, device=labels.device)
+        return remapped_labels
+
+class OFA(Distiller):
     def __init__(self, eps: float = 1.0, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()
         self.eps = eps
@@ -1031,29 +1035,29 @@ class OFA(nn.Module):
 
     def forward(
         self,
-        hidden_student: torch.Tensor,  # [B, D]
-        hidden_teacher: torch.Tensor,  # [B, D]
+        logits_student: torch.Tensor,  # [B, N]
+        logits_teacher: torch.Tensor,  # [B, N]
         labels: torch.Tensor           # [B]
     ) -> torch.Tensor:
         # convert to cuda
-        hidden_student = hidden_student.to(self.device)
-        hidden_teacher = hidden_teacher.to(self.device)
+        logits_student = logits_student.to(self.device)
+        logits_teacher = logits_teacher.to(self.device)
         labels = labels.to(self.device)
+
+        num_classes_in_logits = logits_student.size(-1)
+        # Remap global labels → local indices
+        remapped_label = self.remap_labels_to_local(labels)
+
+        # One-hot mask aligned with logits
+        target_mask = F.one_hot(remapped_label, num_classes_in_logits).float()
         
         # Normalize for cosine similarity stability
-        hidden_student = F.normalize(hidden_student, p=2, dim=-1)
-        hidden_teacher = F.normalize(hidden_teacher, p=2, dim=-1)
-
-        # Similarity logits from embeddings
-        logits_student = torch.matmul(hidden_student, hidden_student.t()) / self.temperature # [B, B]
-        logits_teacher = torch.matmul(hidden_teacher, hidden_teacher.t()) / self.temperature # [B, B]
+        logits_student = F.normalize(logits_student, p=2, dim=-1)
+        logits_teacher = F.normalize(logits_teacher, p=2, dim=-1)
 
         # Probability distributions
-        pred_student = F.softmax(logits_student, dim=1)
-        pred_teacher = F.softmax(logits_teacher, dim=1)
-
-        # Mask for same-label pairs
-        target_mask = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
+        pred_student = F.softmax(logits_student / self.temperature, dim=1)
+        pred_teacher = F.softmax(logits_teacher / self.temperature, dim=1)
 
         # Loss computation
         prod = (pred_teacher + target_mask) ** self.eps
@@ -1137,9 +1141,9 @@ if __name__ == "__main__":
     import torch
     from torch import nn
 
-    embeddings_a = torch.randn(10, 768)
-    embeddings_b = torch.randn(10, 768)
-    labels = torch.randint(0, 2, (10,))
+    embeddings_a = torch.randn(16, 11)
+    embeddings_b = torch.randn(16, 11)
+    labels = torch.randint(0, 41, (16,))
 
     # Initialize the loss function
     loss_fn1 = OFA()
@@ -1147,6 +1151,6 @@ if __name__ == "__main__":
 
     # Compute the loss
     loss1 = loss_fn1(embeddings_a, embeddings_b, labels)
-    loss2 = loss_fn2(embeddings_a, embeddings_b, labels)
+    # loss2 = loss_fn2(embeddings_a, embeddings_b, labels)
     print("Loss 1:", loss1.item())
-    print("Loss 2:", loss2.item())
+    # print("Loss 2:", loss2.item())
