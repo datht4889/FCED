@@ -269,7 +269,8 @@ def gen_data(r2desc, rel2id, sample, n=10, t=0, key=None):
     print(input)
     # output = gpt(input=input, t=t, key=key)
     import json
-    syn_data = json.load(open('data/CFRLTacred/syn_data.txt', 'r'))
+    with open('data/CFRLTacred/syn_data.txt', 'r') as f:
+        syn_data = json.load(f)
     output = syn_data[rname]
     print(output)
     try:
