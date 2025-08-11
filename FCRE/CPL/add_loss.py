@@ -1065,23 +1065,60 @@ class OFA(Distiller):
         loss = loss_matrix.sum(dim=-1).mean()
 
         return loss
+
+class WKD(Distiller):
+    def __init__(self, temperature: float = 1.0, sinkhorn_lambda: float = 0.05, sinkhorn_iter: int = 10):
+        super().__init__()
+        self.temperature = temperature
+        self.sinkhorn_lambda = sinkhorn_lambda
+        self.sinkhorn_iter = sinkhorn_iter
+
+    def sinkhorn(self, w1, w2, cost, reg=0.05, max_iter=10):
+        bs, dim = w1.shape
+        w1 = w1.unsqueeze(-1)
+        w2 = w2.unsqueeze(-1)
+
+        u = 1/dim*torch.ones_like(w1, device=w1.device, dtype=w1.dtype) # [batch,N,1]
+        K = torch.exp(-cost / reg)
+        Kt= K.transpose(2, 1)
+        for i in range(max_iter):
+            v=w2/(torch.bmm(Kt,u)+1e-8) #[batch,N,1]
+            u=w1/(torch.bmm(K,v)+1e-8)  #[batch,N,1]
+
+        flow = u.reshape(bs, -1, 1) * K * v.reshape(bs, 1, -1)
+        return flow
     
-def _get_gt_mask(logits, target):
-    target = target.reshape(-1)
-    mask = torch.zeros_like(logits).scatter_(1, target.unsqueeze(1), 1).bool()
-    return mask
+    def forward(
+        self,
+        logits_student: torch.Tensor,  # [B, N]
+        logits_teacher: torch.Tensor,  # [B, N]
+        labels: torch.Tensor           # [B]
+    ) -> torch.Tensor:
+        # convert to cuda
+        logits_student = logits_student.to(self.device)
+        logits_teacher = logits_teacher.to(self.device)
+        labels = labels.to(self.device)
+        
+        # Normalize for cosine similarity stability
+        logits_student = F.normalize(logits_student, p=2, dim=-1)
+        logits_teacher = F.normalize(logits_teacher, p=2, dim=-1)
 
-def _get_other_mask(logits, target):
-    target = target.reshape(-1)
-    mask = torch.ones_like(logits).scatter_(1, target.unsqueeze(1), 0).bool()
-    return mask
+        pred_student = F.softmax(logits_student / self.temperature, dim=-1).to(torch.float32)
+        pred_teacher = F.softmax(logits_teacher / self.temperature, dim=-1).to(torch.float32)
 
-def cat_mask(t, mask1, mask2):
-    t1 = (t * mask1).sum(dim=1, keepdims=True)
-    t2 = (t * mask2).sum(dim=1, keepdims=True)
-    return torch.cat([t1, t2], dim=1)
+        cost_matrix = F.relu(cost_matrix) + 1e-8
+        cost_matrix = cost_matrix.to(pred_student.device)
+        
+        # flow shape [bxnxn]
+        flow = self.sinkhorn(pred_student, pred_teacher, cost_matrix, reg=self.sinkhorn_lambda, max_iter=self.sinkhorn_iter)
 
-class DKD(nn.Module):
+        ws_distance = (flow * cost_matrix).sum(-1).sum(-1)
+        ws_distance = ws_distance.mean()
+        return ws_distance
+
+
+
+class DKD(Distiller):
     """
     Decoupled Knowledge Distillation loss using hidden embeddings.
     Converts hidden embeddings into similarity logits before DKD computation.
@@ -1094,47 +1131,77 @@ class DKD(nn.Module):
         self.normalize = normalize
         self.device = device
 
-    def forward(self, hidden_student, hidden_teacher, labels):
+    def _get_gt_mask(self, logits, target):
+        target = target.reshape(-1)
+        mask = torch.zeros_like(logits).scatter_(1, target.unsqueeze(1), 1).bool()
+        return mask
+
+    def _get_other_mask(self, logits, target):
+        target = target.reshape(-1)
+        mask = torch.ones_like(logits).scatter_(1, target.unsqueeze(1), 0).bool()
+        return mask
+
+    def cat_mask(self, t, mask1, mask2):
+        t1 = (t * mask1).sum(dim=1, keepdims=True)
+        t2 = (t * mask2).sum(dim=1, keepdims=True)
+        return torch.cat([t1, t2], dim=1)
+
+    def dkd_loss(self, logits_student, logits_teacher, target, alpha, beta, temperature):
+        gt_mask = self._get_gt_mask(logits_student, target)
+        other_mask = self._get_other_mask(logits_student, target)
+        pred_student = F.softmax(logits_student / temperature, dim=1)
+        pred_teacher = F.softmax(logits_teacher / temperature, dim=1)
+        pred_student = self.cat_mask(pred_student, gt_mask, other_mask)
+        pred_teacher = self.cat_mask(pred_teacher, gt_mask, other_mask)
+        log_pred_student = torch.log(pred_student+1e-5)
+        tckd_loss = (
+            F.kl_div(log_pred_student, pred_teacher, reduction='sum')
+            * (temperature**2)
+            / target.shape[0]
+        )
+        pred_teacher_part2 = F.softmax(
+            logits_teacher / temperature - 1000.0 * gt_mask, dim=1
+        )
+        log_pred_student_part2 = F.log_softmax(
+            logits_student / temperature - 1000.0 * gt_mask, dim=1
+        )
+        nckd_loss = (
+            F.kl_div(log_pred_student_part2, pred_teacher_part2, reduction='sum')
+            * (temperature**2)
+            / target.shape[0]
+        )
+        return alpha * tckd_loss + beta * nckd_loss
+
+    def forward(
+        self,
+        logits_student: torch.Tensor,  # [B, N]
+        logits_teacher: torch.Tensor,  # [B, N]
+        labels: torch.Tensor           # [B]
+    ) -> torch.Tensor:
         # convert to cuda
-        hidden_student = hidden_student.to(self.device)
-        hidden_teacher = hidden_teacher.to(self.device)
+        logits_student = logits_student.to(self.device)
+        logits_teacher = logits_teacher.to(self.device)
         labels = labels.to(self.device)
 
         if self.normalize:
-            hidden_student = F.normalize(hidden_student, dim=-1)
-            hidden_teacher = F.normalize(hidden_teacher, dim=-1)
+            logits_student = F.normalize(logits_student, p=2, dim=-1)
+            logits_teacher = F.normalize(logits_teacher, p=2, dim=-1)
 
-        # Convert embeddings to similarity logits
-        logits_student = torch.matmul(hidden_student, hidden_student.T)
-        logits_teacher = torch.matmul(hidden_teacher, hidden_teacher.T)
+        # Remap global labels → local indices
+        remapped_label = self.remap_labels_to_local(labels)
 
-        # Apply DKD loss with generated logits
-        gt_mask = _get_gt_mask(logits_student, labels)
-        other_mask = _get_other_mask(logits_student, labels)
-
-        pred_student = F.softmax(logits_student / self.temperature, dim=1)
-        pred_teacher = F.softmax(logits_teacher / self.temperature, dim=1)
-
-        pred_student = cat_mask(pred_student, gt_mask, other_mask)
-        pred_teacher = cat_mask(pred_teacher, gt_mask, other_mask)
-
-        log_pred_student = torch.log(pred_student)
-        tckd_loss = F.kl_div(
-            log_pred_student, pred_teacher, reduction='batchmean'
-        ) * (self.temperature ** 2)
-
-        pred_teacher_part2 = F.softmax(
-            logits_teacher / self.temperature - 1000.0 * gt_mask, dim=1
-        )
-        log_pred_student_part2 = F.log_softmax(
-            logits_student / self.temperature - 1000.0 * gt_mask, dim=1
+        loss = self.dkd_loss(
+            logits_student,
+            logits_teacher,
+            remapped_label,
+            self.alpha,
+            self.beta,
+            self.temperature,
         )
 
-        nckd_loss = F.kl_div(
-            log_pred_student_part2, pred_teacher_part2, reduction='batchmean'
-        ) * (self.temperature ** 2)
+        return loss
 
-        return self.alpha * tckd_loss + self.beta * nckd_loss
+    
     
 if __name__ == "__main__":
     # Example usage
@@ -1143,14 +1210,14 @@ if __name__ == "__main__":
 
     embeddings_a = torch.randn(16, 11)
     embeddings_b = torch.randn(16, 11)
-    labels = torch.randint(0, 41, (16,))
+    labels = torch.randint(0, 13, (16,))
 
     # Initialize the loss function
     loss_fn1 = OFA()
     loss_fn2 = DKD()
 
     # Compute the loss
-    loss1 = loss_fn1(embeddings_a, embeddings_b, labels)
-    # loss2 = loss_fn2(embeddings_a, embeddings_b, labels)
-    print("Loss 1:", loss1.item())
-    # print("Loss 2:", loss2.item())
+    # loss1 = loss_fn1(embeddings_a, embeddings_b, labels)
+    loss2 = loss_fn2(embeddings_a, embeddings_b, labels)
+    # print("Loss 1:", loss1.item())
+    print("Loss 2:", loss2.item())
