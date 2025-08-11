@@ -453,7 +453,7 @@ class Manager(object):
             if self.config.SAM_type == 'full' :
                 self.config.SAM = True
             self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
-            # self.train_model(encoder, old_encoder, training_data_initialize)
+            self.train_model(encoder, old_encoder, training_data_initialize)
             if self.config.SAM_type == 'current':
                 self.config.SAM = False
 
@@ -481,14 +481,14 @@ class Manager(object):
                 memory_data_initialize += data_generation
                 # augment data:
                 data_for_train = training_data_initialize + memory_data_initialize
-                # if config.mixup:
-                #     if self.config.use_llm:
-                #         mixup_samples = mixup_data_augmentation_llm(data_for_train)
-                #     else:
-                #         mixup_samples = mixup_data_augmentation(data_for_train)
-                #     print('Mixup data size: ', len(mixup_samples))
-                #     self.moment.init_moment_mixup(encoder, mixup_samples, is_memory=True) 
-                #     self.train_model_mixup(encoder, mixup_samples)
+                if config.mixup:
+                    if self.config.use_llm:
+                        mixup_samples = mixup_data_augmentation_llm(data_for_train)
+                    else:
+                        mixup_samples = mixup_data_augmentation(data_for_train)
+                    print('Mixup data size: ', len(mixup_samples))
+                    self.moment.init_moment_mixup(encoder, mixup_samples, is_memory=True) 
+                    self.train_model_mixup(encoder, mixup_samples)
                 self.moment.init_moment(encoder, memory_data_initialize, is_memory=True)
                 self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True, seen_proto=seen_proto)
                 
