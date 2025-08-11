@@ -267,7 +267,10 @@ def gen_data(r2desc, rel2id, sample, n=10, t=0, key=None):
     print('####', rname ,'####')
     input = prompt_input(rname, rdesc, sample=sample, n=n)
     print(input)
-    output = gpt(input=input, t=t, key=key)
+    # output = gpt(input=input, t=t, key=key)
+    import json
+    syn_data = json.load(open('data/CFRLTacred/syn_data.txt', 'r'))
+    output = syn_data[rname]
     print(output)
     try:
         parse_output = parse(rel2id, output)

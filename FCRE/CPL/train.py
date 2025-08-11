@@ -113,7 +113,7 @@ class Manager(object):
         return mem_set, mem_feas
         # return mem_set, features, rel_proto
         
-    def train_model(self, encoder, old_encoder, training_data, is_memory=False):
+    def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None):
         if self.config.use_llm:
             data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         else:
@@ -165,12 +165,15 @@ class Manager(object):
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
                     old_hidden = old_encoder(instance)
+                    seen_proto = seen_proto.to(self.config.device)
+                    logits = -self._edist(hidden, seen_proto)
+                    old_logits = -self._edist(old_hidden, seen_proto)
                     if self.config.distill_type == 'RKD':
-                        rkd_angle_loss = rkd_angle_loss_fn(hidden, old_hidden)
-                        rkd_distance_loss = rkd_distance_loss_fn(hidden, old_hidden)
+                        rkd_angle_loss = rkd_angle_loss_fn(logits, old_logits)
+                        rkd_distance_loss = rkd_distance_loss_fn(logits, old_logits)
                         loss = loss + rkd_angle_loss * self.config.distill_alpha + rkd_distance_loss * self.config.distill_alpha
                     elif self.config.distill_type == 'DKD' or self.config.distill_type == 'OFA':
-                        distill_loss = distill_loss_fn(hidden, old_hidden, labels)
+                        distill_loss = distill_loss_fn(logits, old_logits, labels)
                         loss = loss + distill_loss * self.config.distill_alpha
                 if not self.config.SAM:
                     optimizer.zero_grad()
@@ -428,6 +431,7 @@ class Manager(object):
         cur_acc_num, total_acc_num = [], []
         memory_samples = {}
         data_generation = []
+        seen_proto = []
         
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
 
@@ -486,7 +490,7 @@ class Manager(object):
                     self.moment.init_moment_mixup(encoder, mixup_samples, is_memory=True) 
                     self.train_model_mixup(encoder, mixup_samples)
                 self.moment.init_moment(encoder, memory_data_initialize, is_memory=True)
-                self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True)
+                self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True, seen_proto=seen_proto)
                 
             # Save the current model state for future tasks
             encoder.set_history() 

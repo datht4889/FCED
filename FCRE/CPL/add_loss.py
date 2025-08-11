@@ -1045,8 +1045,8 @@ class OFA(nn.Module):
         hidden_teacher = F.normalize(hidden_teacher, p=2, dim=-1)
 
         # Similarity logits from embeddings
-        logits_student = torch.matmul(hidden_student, hidden_student.t()) / self.temperature
-        logits_teacher = torch.matmul(hidden_teacher, hidden_teacher.t()) / self.temperature
+        logits_student = torch.matmul(hidden_student, hidden_student.t()) / self.temperature # [B, B]
+        logits_teacher = torch.matmul(hidden_teacher, hidden_teacher.t()) / self.temperature # [B, B]
 
         # Probability distributions
         pred_student = F.softmax(logits_student, dim=1)
