@@ -453,7 +453,7 @@ class Manager(object):
             if self.config.SAM_type == 'full' :
                 self.config.SAM = True
             self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
-            self.train_model(encoder, old_encoder, training_data_initialize)
+            # self.train_model(encoder, old_encoder, training_data_initialize)
             if self.config.SAM_type == 'current':
                 self.config.SAM = False
 
@@ -471,7 +471,7 @@ class Manager(object):
                         gen_text += gen_samples
                 for sample in gen_text:
                     data_generation.append(sampler.tokenize(sample))
-                    
+            print('data_generation: ', len(data_generation))
             # Train memory
             if step > 0:
                 old_encoder = encoder.get_old_model()
