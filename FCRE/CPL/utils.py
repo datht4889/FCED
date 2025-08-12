@@ -261,19 +261,26 @@ def prompt_input(rname, rdesc, sample=None, n=10):
     return pre_input + input
 
 
-def gen_data(r2desc, rel2id, sample, n=10, t=0, key=None):
+def gen_data(r2desc, rel2id, sample, n=10, t=0, current_round=None):
     rname = sample['relation']
     rdesc = r2desc[rname]
     print('####', rname ,'####')
     input = prompt_input(rname, rdesc, sample=sample, n=n)
     print(input)
-    output = gpt(input=input, t=t, key=key)
+    # output = gpt(input=input, t=t)
+    import json
+    with open('data/CFRLTacred/syn_data.json', 'r') as f:
+        syn_data = json.load(f)
+    output = syn_data['Round '+str(current_round)][rname]
     print(output)
     try:
         parse_output = parse(rel2id, output)
-    except:
-        output = gpt(input=input + "\nRelation: ", t=t, key=key)
-        parse_output = parse(rel2id, output)
+    except Exception as e:
+        # output = gpt(input=input + "\nRelation: ", t=t)
+        # parse_output = parse(rel2id, output)
+        print("Round "+str(current_round)+" failed")
+        print("Relation: ", rname)
+        print(e)
 
 
     return parse_output
