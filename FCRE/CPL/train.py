@@ -374,7 +374,7 @@ class Manager(object):
                 for rel in current_relations:
                     for sample in memory_samples[rel]:
                         sample_text = self._get_sample_text(self.config.training_data, sample['index'])
-                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.key)
+                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.current_round)
                         gen_text += gen_samples
                 for sample in gen_text:
                     data_generation.append(sampler.tokenize(sample))
@@ -547,6 +547,7 @@ if __name__ == '__main__':
         print('seed: ', config.seed)
         logger.info(f"--------Round {i}")
         logger.info(f"seed: {config.seed}")
+        config.current_round = i
         manager = Manager(config)
         acc = manager.train()
         acc_list.append(acc)
