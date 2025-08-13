@@ -155,6 +155,8 @@ class Manager(object):
                 distill_loss_fn = DKD()
             elif self.config.distill_type == 'OFA':
                 distill_loss_fn = OFA()
+            elif self.config.distill_type == 'WKD':
+                distill_loss_fn = WKD()
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
@@ -172,7 +174,7 @@ class Manager(object):
                         rkd_angle_loss = rkd_angle_loss_fn(logits, old_logits)
                         rkd_distance_loss = rkd_distance_loss_fn(logits, old_logits)
                         loss = loss + rkd_angle_loss * self.config.distill_alpha + rkd_distance_loss * self.config.distill_alpha
-                    elif self.config.distill_type == 'DKD' or self.config.distill_type == 'OFA':
+                    elif self.config.distill_type in ['DKD', 'OFA', 'WKD']:
                         distill_loss = distill_loss_fn(logits, old_logits, labels)
                         loss = loss + distill_loss * self.config.distill_alpha
                 if not self.config.SAM:
@@ -197,7 +199,7 @@ class Manager(object):
                             rkd_angle_loss = rkd_angle_loss_fn(hidden, old_hidden)
                             rkd_distance_loss = rkd_distance_loss_fn(hidden, old_hidden)
                             loss = loss + rkd_angle_loss * self.config.distill_alpha + rkd_distance_loss * self.config.distill_alpha
-                        elif self.config.distill_type == 'DKD' or self.config.distill_type == 'OFA':
+                        elif self.config.distill_type in ['DKD', 'OFA', 'WKD']:
                             distill_loss = distill_loss_fn(hidden, old_hidden, labels)
                             loss = loss + distill_loss * self.config.distill_alpha
                             
