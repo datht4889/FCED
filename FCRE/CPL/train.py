@@ -149,8 +149,7 @@ class Manager(object):
 
         if is_memory and self.config.distill and self.config.distill_type != 'none':
             if self.config.distill_type == 'RKD':
-                rkd_angle_loss_fn = RKdAngle()
-                rkd_distance_loss_fn = RkdDistance()
+                distill_loss_fn = RKD()
             elif self.config.distill_type == 'DKD':
                 distill_loss_fn = DKD()
             elif self.config.distill_type == 'OFA':
@@ -170,13 +169,11 @@ class Manager(object):
                     seen_proto = seen_proto.to(self.config.device)
                     logits = -self._edist(hidden, seen_proto)
                     old_logits = -self._edist(old_hidden, seen_proto)
-                    if self.config.distill_type == 'RKD':
-                        rkd_angle_loss = rkd_angle_loss_fn(logits, old_logits)
-                        rkd_distance_loss = rkd_distance_loss_fn(logits, old_logits)
-                        loss = loss + rkd_angle_loss * self.config.distill_alpha + rkd_distance_loss * self.config.distill_alpha
-                    elif self.config.distill_type in ['DKD', 'OFA', 'WKD']:
+                    if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
                         distill_loss = distill_loss_fn(logits, old_logits, labels)
                         loss = loss + distill_loss * self.config.distill_alpha
+                    else:
+                        raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
@@ -195,11 +192,7 @@ class Manager(object):
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
                         old_hidden = old_encoder(instance)
-                        if self.config.distill_type == 'RKD':
-                            rkd_angle_loss = rkd_angle_loss_fn(hidden, old_hidden)
-                            rkd_distance_loss = rkd_distance_loss_fn(hidden, old_hidden)
-                            loss = loss + rkd_angle_loss * self.config.distill_alpha + rkd_distance_loss * self.config.distill_alpha
-                        elif self.config.distill_type in ['DKD', 'OFA', 'WKD']:
+                        if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
                             distill_loss = distill_loss_fn(hidden, old_hidden, labels)
                             loss = loss + distill_loss * self.config.distill_alpha
                             
