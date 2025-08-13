@@ -414,10 +414,6 @@ class Manager(object):
         self.rel2id = sampler.rel2id
         self.r2desc = self._read_description(self.config.relation_description)
 
-        # get seen relation id
-        seen_relid = []
-        for rel in seen_relations:
-            seen_relid.append(self.rel2id[rel])
 
         # encoder
         if self.config.use_llm:
@@ -443,6 +439,11 @@ class Manager(object):
                 self.moment = Moment_LLM(self.config)
             else:
                 self.moment = Moment(self.config)
+
+            # get seen relation id
+            seen_relid = []
+            for rel in seen_relations:
+                seen_relid.append(self.rel2id[rel])
 
             # Train current task
             training_data_initialize = []
