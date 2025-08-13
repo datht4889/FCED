@@ -440,10 +440,11 @@ class Manager(object):
             else:
                 self.moment = Moment(self.config)
 
-            # get seen relation id
-            seen_relid = []
-            for rel in seen_relations:
-                seen_relid.append(self.rel2id[rel])
+            if step == 0:
+                # get seen relation id
+                seen_relid = []
+                for rel in seen_relations:
+                    seen_relid.append(self.rel2id[rel])
 
             # Train current task
             training_data_initialize = []
@@ -502,6 +503,11 @@ class Manager(object):
                 proto, _ = self.get_memory_proto(encoder, memory_samples[rel])
                 seen_proto.append(proto)
             seen_proto = torch.stack(seen_proto, dim=0)
+
+            # get seen relation id
+            seen_relid = []
+            for rel in seen_relations:
+                seen_relid.append(self.rel2id[rel])
             
             # Eval current task and history task
             test_data_initialize_cur, test_data_initialize_seen = [], []
