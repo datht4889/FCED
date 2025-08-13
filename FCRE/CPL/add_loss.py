@@ -1030,6 +1030,8 @@ class Distiller(nn.Module):
         """
         new_logits_student = torch.zeros(logits_student.shape[0], total_class, device=logits_student.device) # [B, total_class]
         new_logits_teacher = torch.zeros(logits_teacher.shape[0], total_class, device=logits_teacher.device) # [B, total_class]
+        print(seen_classes)
+        print(logits_student.shape[1])
         assert len(seen_classes) == logits_student.shape[1] (f"seen_classes should be the same as the number of classes in the teacher. {len(seen_classes)} != {logits_student.shape[1]}. Seen classes: {seen_classes}. ")
         for b in range(logits_student.shape[0]):
             for idx in range(logits_student.shape[1]):
