@@ -113,7 +113,7 @@ class Manager(object):
         return mem_set, mem_feas
         # return mem_set, features, rel_proto
         
-    def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None):
+    def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None, seen_relid=None):
         if self.config.use_llm:
             data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         else:
@@ -149,13 +149,13 @@ class Manager(object):
 
         if is_memory and self.config.distill and self.config.distill_type != 'none':
             if self.config.distill_type == 'RKD':
-                distill_loss_fn = RKD()
+                distill_loss_fn = RKD(device=self.config.device)
             elif self.config.distill_type == 'DKD':
-                distill_loss_fn = DKD()
+                distill_loss_fn = DKD(device=self.config.device)
             elif self.config.distill_type == 'OFA':
-                distill_loss_fn = OFA()
+                distill_loss_fn = OFA(device=self.config.device)
             elif self.config.distill_type == 'WKD':
-                distill_loss_fn = WKD()
+                distill_loss_fn = WKD(device=self.config.device)
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
@@ -170,7 +170,7 @@ class Manager(object):
                     logits = -self._edist(hidden, seen_proto)
                     old_logits = -self._edist(old_hidden, seen_proto)
                     if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
-                        distill_loss = distill_loss_fn(logits, old_logits, labels)
+                        distill_loss = distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
                         loss = loss + distill_loss * self.config.distill_alpha
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
@@ -414,6 +414,11 @@ class Manager(object):
         self.rel2id = sampler.rel2id
         self.r2desc = self._read_description(self.config.relation_description)
 
+        # get seen relation id
+        seen_relid = []
+        for rel in seen_relations:
+            seen_relid.append(self.rel2id[rel])
+
         # encoder
         if self.config.use_llm:
             encoder = EncodingModel_LLM2vec(self.config)
@@ -485,7 +490,7 @@ class Manager(object):
                     self.moment.init_moment_mixup(encoder, mixup_samples, is_memory=True) 
                     self.train_model_mixup(encoder, mixup_samples)
                 self.moment.init_moment(encoder, memory_data_initialize, is_memory=True)
-                self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True, seen_proto=seen_proto)
+                self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True, seen_proto=seen_proto, seen_relid=seen_relid)
                 
             # Save the current model state for future tasks
             encoder.set_history() 
@@ -496,11 +501,6 @@ class Manager(object):
                 proto, _ = self.get_memory_proto(encoder, memory_samples[rel])
                 seen_proto.append(proto)
             seen_proto = torch.stack(seen_proto, dim=0)
-
-            # get seen relation id
-            seen_relid = []
-            for rel in seen_relations:
-                seen_relid.append(self.rel2id[rel])
             
             # Eval current task and history task
             test_data_initialize_cur, test_data_initialize_seen = [], []
@@ -508,9 +508,7 @@ class Manager(object):
                 test_data_initialize_cur += test_data[rel]
             for rel in seen_relations:
                 test_data_initialize_seen += historic_test_data[rel]
-            seen_relid = []
-            for rel in seen_relations:
-                seen_relid.append(self.rel2id[rel])
+
             ac1 = self.eval_encoder_proto(encoder, seen_proto, seen_relid, test_data_initialize_cur)
             ac2 = self.eval_encoder_proto(encoder, seen_proto, seen_relid, test_data_initialize_seen)
             cur_acc_num.append(ac1)
@@ -601,6 +599,7 @@ if __name__ == '__main__':
         config.rel_index = './data/CFRLFewRel/rel_index.npy'
         config.relation_name = './data/CFRLFewRel/relation_name.txt'
         config.relation_description = './data/CFRLFewRel/relation_description.txt'
+        config.total_class = 80
         if config.num_k == 5:
             config.rel_cluster_label = './data/CFRLFewRel/CFRLdata_10_100_10_5/rel_cluster_label_0.npy'
             config.training_data = './data/CFRLFewRel/CFRLdata_10_100_10_5/train_0.txt'
@@ -615,6 +614,7 @@ if __name__ == '__main__':
         config.rel_index = './data/CFRLTacred/rel_index.npy'
         config.relation_name = './data/CFRLTacred/relation_name.txt'
         config.relation_description = './data/CFRLTacred/relation_description_raw.txt'
+        config.total_class = 41
         if config.num_k == 5:
             config.rel_cluster_label = './data/CFRLTacred/CFRLdata_6_100_5_5/rel_cluster_label_0.npy'
             config.training_data = './data/CFRLTacred/CFRLdata_6_100_5_5/train_0.txt'
