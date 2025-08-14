@@ -164,7 +164,7 @@ class Manager(object):
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
-                    old_hidden = old_encoder(instance)
+                    old_hidden,old_lmhead_output = old_encoder(instance)
                     seen_proto = seen_proto.to(self.config.device)
                     logits = -self._edist(hidden, seen_proto)
                     old_logits = -self._edist(old_hidden, seen_proto)
@@ -213,7 +213,7 @@ class Manager(object):
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
-                        old_hidden = old_encoder(instance)
+                        old_hidden, old_lmhead_output = old_encoder(instance)
                         seen_proto = seen_proto.to(self.config.device)
                         logits = -self._edist(hidden, seen_proto)
                         old_logits = -self._edist(old_hidden, seen_proto)
