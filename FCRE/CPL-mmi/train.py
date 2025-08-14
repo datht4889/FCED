@@ -7,7 +7,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
-from transformers import set_seed
+from transformers import set_seed, enable_full_determinism
 import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
@@ -23,12 +23,6 @@ from sam import *
 from dotenv import load_dotenv
 import os
 import logging
-
-# Load environment variables from .env file
-load_dotenv("./.env")
-
-# Now you can access the environment variables using os.getenv()
-api_key = os.getenv('OPENAI_API_KEY')
 
 
 class Manager(object):
@@ -423,6 +417,7 @@ class Manager(object):
 
 
     def train(self):
+        enable_full_determinism(self.config.seed)
         # sampler 
         sampler = data_sampler_CFRL(config=self.config, seed=self.config.seed)
         self.config.vocab_size = sampler.config.vocab_size
@@ -466,7 +461,7 @@ class Manager(object):
                 for rel in current_relations:
                     for sample in memory_samples[rel]:
                         sample_text = self._get_sample_text(self.config.training_data, sample['index'])
-                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, api_key)
+                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.current_round)
                         gen_text += gen_samples
                 for sample in gen_text:
                     data_generation.append(sampler.tokenize(sample))
@@ -629,13 +624,15 @@ if __name__ == '__main__':
     logger.info('#############params############')
 
     # seed 
-    set_seed(config.seed)
+    enable_full_determinism(config.seed)
     base_seed = config.seed
 
     acc_list = []
     for i in range(config.total_round):
         config.seed = base_seed + i * 100
+        enable_full_determinism(config.seed)
         print('--------Round ', i)
+        config.current_round = i
         print('seed: ', config.seed)
         logger.info(f"--------Round {i}")
         logger.info(f"seed: {config.seed}")
