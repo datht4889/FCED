@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import argparse
 import torch
 import random
@@ -7,28 +10,21 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
-from transformers import set_seed
+from transformers import set_seed, enable_full_determinism
 import os
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
 from config import Config
 from sampler import data_sampler_CFRL
 from data_loader import get_data_loader_BERT
 from utils import Moment, gen_data
 from encoder import EncodingModel
-from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
+from add_loss import *
 from mixup import mixup_data_augmentation
 from sam import *
 
-from dotenv import load_dotenv
 import os
 import logging
 
-# Load environment variables from .env file
-load_dotenv("./.env")
-
-# Now you can access the environment variables using os.getenv()
-api_key = os.getenv('OPENAI_API_KEY')
 
 
 class Manager(object):
@@ -113,14 +109,14 @@ class Manager(object):
         # return mem_set, features, rel_proto
         
 
-    def train_model(self, encoder, training_data, is_memory=False):
+    def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None, seen_relid=None):
         data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
         if self.config.base_optimizer == 'Adam':
             optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         elif self.config.base_optimizer == 'AdamW':
             optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            # base_optimizer = optim.AdamW
+            # base_optimizer = optim.Adam
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
 
             if self.config.base_optimizer == 'Adam':
@@ -146,12 +142,37 @@ class Manager(object):
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
         softmax = nn.Softmax(dim=0)
 
+        if is_memory and self.config.distill and self.config.distill_type != 'none':
+
+            if self.config.distill_type == 'RKD':
+                distill_loss_fn = RKD(device=self.config.device)
+
+            elif self.config.distill_type == 'DKD':
+                distill_loss_fn = DKD(device=self.config.device)
+
+            elif self.config.distill_type == 'OFA':
+                distill_loss_fn = OFA(device=self.config.device)
+
+            elif self.config.distill_type == 'WKD':
+                distill_loss_fn = WKD(device=self.config.device)
+
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
                 for k in instance.keys():
                     instance[k] = instance[k].to(self.config.device)
                 hidden,lmhead_output = encoder(instance)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)
+
+                if is_memory and self.config.distill and self.config.distill_type != 'none':
+                    old_hidden = old_encoder(instance)
+                    seen_proto = seen_proto.to(self.config.device)
+                    logits = -self._edist(hidden, seen_proto)
+                    old_logits = -self._edist(old_hidden, seen_proto)
+                    if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
+                        distill_loss = distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
+                        loss = loss + distill_loss * self.config.distill_alpha
+                    else:
+                        raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
 
                 # compute infonceloss
                 infoNCE_loss = 0
@@ -176,7 +197,9 @@ class Manager(object):
 
                 infoNCE_loss = infoNCE_loss / len(list_labels)
                 # wandb.log({'infoNCE_loss': infoNCE_loss, 'loss': loss})
+
                 loss = 0.8*loss + infoNCE_loss
+
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
@@ -188,6 +211,17 @@ class Manager(object):
                     optimizer.first_step(zero_grad=True)
                     hidden,lmhead_output = encoder(instance)
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
+
+                    if is_memory and self.config.distill and self.config.distill_type != 'none':
+                        old_hidden = old_encoder(instance)
+                        seen_proto = seen_proto.to(self.config.device)
+                        logits = -self._edist(hidden, seen_proto)
+                        old_logits = -self._edist(old_hidden, seen_proto)
+                        if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
+                            distill_loss = distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
+                            loss = loss + distill_loss * self.config.distill_alpha
+                        else:
+                            raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
 
                     # compute infonceloss
                     infoNCE_loss = 0
@@ -238,7 +272,7 @@ class Manager(object):
         elif self.config.base_optimizer == 'AdamW':
             optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            # base_optimizer = optim.AdamW
+            # base_optimizer = optim.Adam
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
             
             if self.config.base_optimizer == 'Adam':
@@ -372,7 +406,7 @@ class Manager(object):
           
 
     def eval_encoder_proto(self, encoder, seen_proto, seen_relid, test_data):
-        batch_size = 16
+        batch_size = self.config.batch_size
         test_loader = get_data_loader_BERT(self.config, test_data, False, False, batch_size)
         
         corrects = 0.0
@@ -423,6 +457,7 @@ class Manager(object):
 
 
     def train(self):
+        enable_full_determinism(self.config.seed)
         # sampler 
         sampler = data_sampler_CFRL(config=self.config, seed=self.config.seed)
         self.config.vocab_size = sampler.config.vocab_size
@@ -435,17 +470,25 @@ class Manager(object):
 
         # encoder
         encoder = EncodingModel(self.config)
+        old_encoder = None
 
         # step is continual task number
         cur_acc, total_acc = [], []
         cur_acc_num, total_acc_num = [], []
         memory_samples = {}
         data_generation = []
+        seen_proto = []
         for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations) in enumerate(sampler):
       
             # Initialization
             self.moment = Moment(self.config)
+
+            if step == 0:
+                # get seen relation id
+                seen_relid = []
+                for rel in seen_relations:
+                    seen_relid.append(self.rel2id[rel])
 
             # Train current task
             training_data_initialize = []
@@ -453,7 +496,7 @@ class Manager(object):
                 training_data_initialize += training_data[rel]
             self.config.SAM = True
             self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
-            self.train_model(encoder, training_data_initialize)
+            self.train_model(encoder, old_encoder, training_data_initialize)
             self.config.SAM = False
 
             # Select memory samples
@@ -466,13 +509,14 @@ class Manager(object):
                 for rel in current_relations:
                     for sample in memory_samples[rel]:
                         sample_text = self._get_sample_text(self.config.training_data, sample['index'])
-                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, api_key)
+                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.current_round)
                         gen_text += gen_samples
                 for sample in gen_text:
                     data_generation.append(sampler.tokenize(sample))
                     
             # Train memory
             if step > 0:
+                old_encoder = encoder.get_old_model()
                 memory_data_initialize = []
                 for rel in seen_relations:
                     memory_data_initialize += memory_samples[rel]
@@ -486,7 +530,10 @@ class Manager(object):
                 if config.mixup:
                     self.train_model_mixup(encoder, mixup_samples)
                 self.moment.init_moment(encoder, memory_data_initialize, is_memory=True) 
-                self.train_model(encoder, memory_data_initialize, is_memory=True)
+                self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True, seen_proto=seen_proto, seen_relid=seen_relid)
+  
+            # Save the current model state for future tasks
+            encoder.set_history() 
 
             # Update proto
             seen_proto = []  
@@ -524,19 +571,24 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task_name", default="FewRel", type=str) # 'FewRel' or 'Tacred'
+    parser.add_argument("--task_name", default="Tacred", type=str) # 'FewRel' or 'Tacred'
     parser.add_argument("--num_k", default=5, type=int)
-    parser.add_argument("--num_gen", default=2, type=int)
+    parser.add_argument("--num_gen", default=5, type=int)
     parser.add_argument("--mixup", action = 'store_true')
     parser.add_argument("--epoch", default=10, type=int)
     parser.add_argument("--epoch_mem", default=5, type=int)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
+    # SAM
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
     parser.add_argument("--decay", default=0, type=float)
+    # Distillation
+    parser.add_argument("--distill", action='store_true', default=False)
+    parser.add_argument("--distill_type", default="none", type=str)
+    parser.add_argument("--distill_alpha", default=0.25, type=float)
     
     args = parser.parse_args()
     config = Config('config.ini')
@@ -554,6 +606,10 @@ if __name__ == '__main__':
     config.rho = args.rho
     config.sam_optimizer = args.sam_optimizer
     config.decay = args.decay
+
+    config.distill = args.distill
+    config.distill_type = args.distill_type        
+    config.distill_alpha = args.distill_alpha
     
 
     print("CPL MMI Start")
@@ -563,7 +619,11 @@ if __name__ == '__main__':
     print(f'SAM: {config.SAM}')
     print(f'SAM Optimizer: {config.sam_optimizer}')
     print(f'decay: {config.decay}')
-    
+    print(f'Distillation: {config.distill}')
+    print(f'Distillation type: {config.distill_type}')  
+    print(f'Distillation alpha: {config.distill_alpha}')
+
+    # config
     print('#############params############')
     print(config.device)
     config.device = torch.device(config.device)
@@ -577,6 +637,7 @@ if __name__ == '__main__':
         config.rel_index = './data/CFRLFewRel/rel_index.npy'
         config.relation_name = './data/CFRLFewRel/relation_name.txt'
         config.relation_description = './data/CFRLFewRel/relation_description.txt'
+        config.total_class = 80
         if config.num_k == 5:
             config.rel_cluster_label = './data/CFRLFewRel/CFRLdata_10_100_10_5/rel_cluster_label_0.npy'
             config.training_data = './data/CFRLFewRel/CFRLdata_10_100_10_5/train_0.txt'
@@ -591,6 +652,7 @@ if __name__ == '__main__':
         config.rel_index = './data/CFRLTacred/rel_index.npy'
         config.relation_name = './data/CFRLTacred/relation_name.txt'
         config.relation_description = './data/CFRLTacred/relation_description.txt'
+        config.total_class = 41
         if config.num_k == 5:
             config.rel_cluster_label = './data/CFRLTacred/CFRLdata_6_100_5_5/rel_cluster_label_0.npy'
             config.training_data = './data/CFRLTacred/CFRLdata_6_100_5_5/train_0.txt'
@@ -629,13 +691,15 @@ if __name__ == '__main__':
     logger.info('#############params############')
 
     # seed 
-    set_seed(config.seed)
+    enable_full_determinism(config.seed)
     base_seed = config.seed
 
     acc_list = []
     for i in range(config.total_round):
         config.seed = base_seed + i * 100
+        enable_full_determinism(config.seed)
         print('--------Round ', i)
+        config.current_round = i
         print('seed: ', config.seed)
         logger.info(f"--------Round {i}")
         logger.info(f"seed: {config.seed}")

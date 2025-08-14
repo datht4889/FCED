@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from transformers import BertModel
+from transformers import BertModel, BertConfig
 from transformers import RobertaModel
 from transformers import BertForMaskedLM
 from transformers.models.llama.modeling_llama import *
@@ -12,7 +12,10 @@ class EncodingModel(nn.Module):
         nn.Module.__init__(self)
         self.config = config
         if config.model == 'bert':
-            self.encoder = BertModel.from_pretrained(config.bert_path).to(config.device)
+            self.bert_config = BertConfig.from_pretrained(config.bert_path)
+            self.bert_config.attn_implementation = 'eager'
+            self.bert_config.deterministic_flash_attn = True
+            self.encoder = BertModel.from_pretrained(config.bert_path, config=self.bert_config).to(config.device)
             self.lm_head = BertForMaskedLM.from_pretrained(config.bert_path).to(config.device).cls
         elif config.model == 'roberta':
             self.encoder = RobertaModel.from_pretrained(config.roberta_path).to(config.device)
@@ -143,6 +146,36 @@ class EncodingModel(nn.Module):
 
             concerate_h_t = (h_state + t_state) / 2 # (b, h)
             return concerate_h_t
+    
+    def set_history(self):
+        """Store the current model state for knowledge distillation"""
+        # Clean up old_model before saving
+        if hasattr(self, 'old_model'):
+            self.cleanup_old_model()
+        
+        # Get state_dict and filter out old_model keys
+        main_state_dict = {k: v for k, v in self.state_dict().items() 
+                        if not k.startswith('old_model.')}
+        
+        self.history = {
+            "state_dict": main_state_dict,
+        }
+    
+    def get_old_model(self):
+        if self.history is None:
+            raise ValueError("No history saved. Call set_history() before training on new tasks.")
+        self.old_model = EncodingModel(self.config)
+        self.old_model.load_state_dict(self.history["state_dict"])
+        self.old_model.eval()
+        self.old_model.to(self.config.device)
+        return self.old_model
+    
+    def cleanup_old_model(self):
+        """Clean up the old model to free memory"""
+        if hasattr(self, 'old_model') and self.old_model is not None:
+            del self.old_model
+            self.old_model = None
+            torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
 class LlamaClassification(LlamaPreTrainedModel):
     def __init__(self, config):
