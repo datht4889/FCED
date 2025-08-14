@@ -192,9 +192,14 @@ class Manager(object):
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
                         old_hidden = old_encoder(instance)
+                        seen_proto = seen_proto.to(self.config.device)
+                        logits = -self._edist(hidden, seen_proto)
+                        old_logits = -self._edist(old_hidden, seen_proto)
                         if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
-                            distill_loss = distill_loss_fn(hidden, old_hidden, labels)
+                            distill_loss = distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
                             loss = loss + distill_loss * self.config.distill_alpha
+                        else:
+                            raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
                             
                     loss.backward()
                     optimizer.second_step(zero_grad=True)
@@ -405,7 +410,7 @@ class Manager(object):
 
 
     def train(self):
-        enable_full_determinism(config.seed)
+        enable_full_determinism(self.config.seed)
         # sampler 
         sampler = data_sampler_CFRL(config=self.config, seed=self.config.seed)
         print('prepared data!')
