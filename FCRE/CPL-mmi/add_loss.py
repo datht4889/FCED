@@ -1084,7 +1084,7 @@ class KLDivAndAngleLoss(Distiller):
         total_class: int = None        # total class ≥ N
     ) -> torch.Tensor:
         # Remap logits_student and logits_teacher to total class softmax.
-        logits_student, logits_teacher = self.remap_logit(logits_student, logits_teacher, seen_classes, total_class)
+        # logits_student, logits_teacher = self.remap_logit(logits_student, logits_teacher, seen_classes, total_class)
 
         # convert to cuda
         logits_student = logits_student.to(self.device)
