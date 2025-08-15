@@ -1058,12 +1058,12 @@ class RKD(Distiller):
         total_class: int = None        # total class ≥ N
     ):
         # Remap logits_student and logits_teacher to total class softmax.
-        logits_student, logits_teacher = self.remap_logit(logits_student, logits_teacher, seen_classes, total_class)
+        # logits_student, logits_teacher = self.remap_logit(logits_student, logits_teacher, seen_classes, total_class)
 
         # convert to cuda
         logits_student = logits_student.to(self.device)
         logits_teacher = logits_teacher.to(self.device)
-        labels = labels.to(self.device)
+        # labels = labels.to(self.device)
 
         loss = self.rkd_angle(logits_student, logits_teacher) + self.rkd_distance(logits_teacher, logits_student)
         return loss

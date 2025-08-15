@@ -169,7 +169,7 @@ class Manager(object):
                     logits = -self._edist(hidden, seen_proto)
                     old_logits = -self._edist(old_hidden, seen_proto)
                     if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
-                        distill_loss = distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
+                        distill_loss = distill_loss_fn(hidden, old_hidden, labels, seen_relid, self.config.total_class)
                         loss = loss + distill_loss * self.config.distill_alpha
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
@@ -218,7 +218,7 @@ class Manager(object):
                         logits = -self._edist(hidden, seen_proto)
                         old_logits = -self._edist(old_hidden, seen_proto)
                         if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD']:
-                            distill_loss = distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
+                            distill_loss = distill_loss_fn(hidden, old_hidden, labels, seen_relid, self.config.total_class)
                             loss = loss + distill_loss * self.config.distill_alpha
                         else:
                             raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
