@@ -1067,6 +1067,45 @@ class RKD(Distiller):
 
         loss = self.rkd_angle(logits_student, logits_teacher) + self.rkd_distance(logits_teacher, logits_student)
         return loss
+    
+class KLDivAndAngleLoss(Distiller):
+    def __init__(self, temperature: float = 1.0, device: str = 'cpu'):
+        super().__init__()
+        self.temperature = temperature
+        self.device = device
+        self.angle_loss = RKdAngle()
+
+    def forward(
+        self,
+        logits_student: torch.Tensor,  # [B, N]
+        logits_teacher: torch.Tensor,  # [B, N]
+        labels: torch.Tensor,          # [B]
+        seen_classes: list,            # [N]
+        total_class: int = None        # total class ≥ N
+    ) -> torch.Tensor:
+        # Remap logits_student and logits_teacher to total class softmax.
+        logits_student, logits_teacher = self.remap_logit(logits_student, logits_teacher, seen_classes, total_class)
+
+        # convert to cuda
+        logits_student = logits_student.to(self.device)
+        logits_teacher = logits_teacher.to(self.device)
+        labels = labels.to(self.device)
+
+        # Normalize for cosine similarity stability
+        logits_student = F.normalize(logits_student, p=2, dim=-1)
+        logits_teacher = F.normalize(logits_teacher, p=2, dim=-1)
+
+        # Probability distributions
+        pred_student = F.softmax(logits_student / self.temperature, dim=1)
+        pred_teacher = F.softmax(logits_teacher / self.temperature, dim=1)
+
+        # KL Divergence Loss
+        kl_loss = F.kl_div(pred_student.log(), pred_teacher, reduction='batchmean')
+
+        # Angle Loss
+        angle_loss = self.angle_loss(logits_student, logits_teacher)
+
+        return kl_loss + angle_loss
 
 class OFA(Distiller):
     def __init__(self, eps: float = 1.0, temperature: float = 1.0, device: str = 'cpu'):
@@ -1171,12 +1210,11 @@ class DKD(Distiller):
     Decoupled Knowledge Distillation loss using hidden embeddings.
     Converts hidden embeddings into similarity logits before DKD computation.
     """
-    def __init__(self, alpha: float = 1.0, beta: float = 1.0, temperature: float = 1.0, normalize: bool = True, device: str = 'cpu'):
+    def __init__(self, alpha: float = 1.0, beta: float = 1.0, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()
         self.alpha = alpha
         self.beta = beta
         self.temperature = temperature
-        self.normalize = normalize
         self.device = device
 
     def _get_gt_mask(self, logits, target):
@@ -1236,9 +1274,8 @@ class DKD(Distiller):
         logits_teacher = logits_teacher.to(self.device)
         labels = labels.to(self.device)
 
-        if self.normalize:
-            logits_student = F.normalize(logits_student, p=2, dim=-1)
-            logits_teacher = F.normalize(logits_teacher, p=2, dim=-1)
+        logits_student = F.normalize(logits_student, p=2, dim=-1)
+        logits_teacher = F.normalize(logits_teacher, p=2, dim=-1)
 
         loss = self.dkd_loss(
             logits_student,
