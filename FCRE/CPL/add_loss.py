@@ -1119,12 +1119,12 @@ class RKDForTopk(Distiller):
             
             # Compute teacher distances for this batch
             with torch.no_grad():
-                t_d = self.pdist(teacher_b, squared=False)
+                t_d = self._pdist(teacher_b, squared=False)
                 mean_td = t_d[t_d > 0].mean()
                 t_d = t_d / mean_td
             
             # Compute student distances for this batch
-            d = self.pdist(student_b, squared=False)
+            d = self._pdist(student_b, squared=False)
             mean_d = d[d > 0].mean()
             d = d / mean_d
             
