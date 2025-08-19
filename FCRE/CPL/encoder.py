@@ -136,7 +136,7 @@ class EncodingModel(nn.Module):
         return masks_1, masks_2
 
             
-    def forward(self, inputs, is_augment=False, is_distill=False): # (b, max_length)
+    def forward(self, inputs, is_augment=False, is_distill=False, top_k=10): # (b, max_length)
         inputs['ids'] = inputs['ids'].to(self.config.device)
         inputs['mask'] = inputs['mask'].to(self.config.device)
         batch_size = inputs['ids'].size()[0]
@@ -173,7 +173,7 @@ class EncodingModel(nn.Module):
 
             # Choose safe k (don't request more than seq length)
             S = token_probs.size(1)
-            k = 10 if S > 10 else S
+            k = top_k if S > top_k else S
 
             # top-k indices and scores per example
             topk_scores, topk_indices = torch.topk(token_probs, k=k, dim=1)
