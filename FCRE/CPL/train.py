@@ -166,10 +166,10 @@ class Manager(object):
                 if self.config.use_llm:
                     hidden = encoder(instance['input'])
                 else:
-                    hidden, topk_hidden = encoder(instance, is_distill=True)
+                    hidden, topk_hidden = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
-                    old_hidden, old_topk_hidden = old_encoder(instance, is_distill=True)
+                    old_hidden, old_topk_hidden = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                     seen_proto = seen_proto.to(self.config.device)
                     # logits = -self._edist(hidden, seen_proto)
                     # old_logits = -self._edist(old_hidden, seen_proto)
@@ -562,6 +562,7 @@ if __name__ == '__main__':
     parser.add_argument("--distill", action='store_true', default=False)
     parser.add_argument("--distill_type", default="none", type=str)
     parser.add_argument("--distill_alpha", default=0.25, type=float)
+    parser.add_argument("--distill_top_k", default=10, type=int)
 
     args = parser.parse_args()
     if args.use_llm:
@@ -588,6 +589,7 @@ if __name__ == '__main__':
     config.distill = args.distill
     config.distill_type = args.distill_type
     config.distill_alpha = args.distill_alpha
+    config.distill_top_k = args.distill_top_k
 
     print("CPL Start")
     print(f'task_name: {config.task_name}')
@@ -600,6 +602,7 @@ if __name__ == '__main__':
     print(f'Distillation: {config.distill}')
     print(f'Distillation type: {config.distill_type}')
     print(f'Distillation alpha: {config.distill_alpha}')
+    print(f'Distillation top_k: {config.distill_top_k}')
 
     # config 
     print('#############params############')
