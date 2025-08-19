@@ -1068,6 +1068,98 @@ class RKD(Distiller):
         loss = self.rkd_angle(logits_student, logits_teacher) + self.rkd_distance(logits_teacher, logits_student)
         return loss
     
+
+class RKDForTopk(Distiller):
+    def __init__(self, temperature: float = 1.0, device: str = 'cpu'):
+        super().__init__()
+        self.temperature = temperature
+        self.device = device
+
+    def rkd_angle(
+                self, 
+                student, # [B, K, N]
+                teacher  # [B, K, N]
+                ):
+        B, K, N = student.shape
+        total_loss = 0.0
+        
+        # Process each batch separately
+        for b in range(B):
+            student_b = student[b]  # [K, N]
+            teacher_b = teacher[b]  # [K, N]
+            
+            # Compute teacher angles for this batch
+            with torch.no_grad():
+                td = (teacher_b.unsqueeze(0) - teacher_b.unsqueeze(1))  # [K, K, N]
+                norm_td = F.normalize(td, p=2, dim=2)
+                t_angle = torch.bmm(norm_td, norm_td.transpose(1, 2)).view(-1)
+            
+            # Compute student angles for this batch
+            sd = (student_b.unsqueeze(0) - student_b.unsqueeze(1))  # [K, K, N]
+            norm_sd = F.normalize(sd, p=2, dim=2)
+            s_angle = torch.bmm(norm_sd, norm_sd.transpose(1, 2)).view(-1)
+            
+            batch_loss = F.smooth_l1_loss(s_angle, t_angle, reduction='mean')
+            total_loss += batch_loss
+        
+        return total_loss / B
+
+    def rkd_distance(
+            self, 
+            student, # [B, K, N]
+            teacher  # [B, K, N]
+            ):
+        B, K, N = student.shape
+        total_loss = 0.0
+        
+        # Process each batch separately
+        for b in range(B):
+            student_b = student[b]  # [K, N]
+            teacher_b = teacher[b]  # [K, N]
+            
+            # Compute teacher distances for this batch
+            with torch.no_grad():
+                t_d = self.pdist(teacher_b, squared=False)
+                mean_td = t_d[t_d > 0].mean()
+                t_d = t_d / mean_td
+            
+            # Compute student distances for this batch
+            d = self.pdist(student_b, squared=False)
+            mean_d = d[d > 0].mean()
+            d = d / mean_d
+            
+            batch_loss = F.smooth_l1_loss(d, t_d, reduction='mean')
+            total_loss += batch_loss
+        
+        return total_loss / B
+
+    def _pdist(self, e, squared=False, eps=1e-12):
+        # e: [K, N]
+        e_square = e.pow(2).sum(dim=1)
+        prod = e @ e.t()
+        res = (e_square.unsqueeze(1) + e_square.unsqueeze(0) - 2 * prod).clamp(min=eps)
+        if not squared:
+            res = res.sqrt()
+        res = res.clone()
+        res[range(len(e)), range(len(e))] = 0
+        return res
+
+    def forward(
+        self,
+        logits_student: torch.Tensor,  # [B, K, N]
+        logits_teacher: torch.Tensor,  # [B, K, N]
+        *args,
+        **kwargs
+    ):
+        # convert to cuda
+        logits_student = logits_student.to(self.device)
+        logits_teacher = logits_teacher.to(self.device)
+        # labels = labels.to(self.device)
+
+        loss = self.rkd_angle(logits_student, logits_teacher) + self.rkd_distance(logits_teacher, logits_student)
+        return loss
+
+
 class KLDivAndAngleLoss(Distiller):
     def __init__(self, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()

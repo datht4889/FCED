@@ -136,19 +136,53 @@ class EncodingModel(nn.Module):
         return masks_1, masks_2
 
             
-    def forward(self, inputs, is_augment=False): # (b, max_length)
+    def forward(self, inputs, is_augment=False, is_distill=False): # (b, max_length)
         inputs['ids'] = inputs['ids'].to(self.config.device)
         inputs['mask'] = inputs['mask'].to(self.config.device)
         batch_size = inputs['ids'].size()[0]
         tensor_range = torch.arange(batch_size) # (b)     
         pattern = self.config.pattern
+
         if pattern == 'softprompt' or pattern == 'hybridprompt':
             input_embedding = self.embedding_input(inputs['ids'])
-            outputs_words = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'])[0]
+            outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
+            outputs_words = outputs[0]  # (b, max_length, h)
+            attention_scores = outputs[2]
         else:
-            outputs_words = self.encoder(inputs['ids'], attention_mask=inputs['mask'])[0] # (b, max_length, h)
+            outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
+            outputs_words = outputs[0]  # (b, max_length, h)
+            attention_scores = outputs[2]
             # outputs_words_des = self.encoder(inputs['ids_des'], attention_mask=inputs['mask_des'])[0] # (b, max_length, h)
 
+        if is_distill:
+            # attentions_layer: (B, H, S, S)
+            attentions_layer = attention_scores[-1]  # choose layer (e.g., last layer)
+
+            # Column-wise sum over queries (dim=2). Result: (B, H, S)
+            col_sum_per_head = attentions_layer.sum(dim=2)
+
+            # Aggregate across heads -> (B, S)
+            token_scores = col_sum_per_head.mean(dim=1)  # (B, S)
+
+            # Mask out padding tokens (if you have attention_mask of shape (B, S))
+            mask = inputs['mask'].to(token_scores.dtype)            # convert to float
+            token_scores = token_scores * mask                      # zero-out pad positions
+
+            # Normalize to probabilities per example
+            token_probs = token_scores / (token_scores.sum(dim=1, keepdim=True) + 1e-12)
+
+            # Choose safe k (don't request more than seq length)
+            S = token_probs.size(1)
+            k = 10 if S > 10 else S
+
+            # top-k indices and scores per example
+            topk_scores, topk_indices = torch.topk(token_probs, k=k, dim=1)
+
+            B, _, H = outputs_words.size()
+
+            # 8) gather hidden vectors for top-k indices -> (B, k, H)
+            idx_expanded = topk_indices.unsqueeze(-1).expand(-1, -1, H)   # (B, k, H)
+            topk_hidden = torch.gather(outputs_words, dim=1, index=idx_expanded)  # (B, k, H)
 
         # return [CLS] hidden
         if pattern == 'cls' or pattern == 'softprompt':
@@ -184,6 +218,20 @@ class EncodingModel(nn.Module):
                 mask_hidden_1 = outputs_words[tensor_range, torch.tensor(masks1)] # (b, h)
                 mask_hidden_2 = outputs_words[tensor_range, torch.tensor(masks2)] # (b, h)
                 return mask_hidden_1, mask_hidden_2    
+            
+            elif is_distill:
+                masks = []
+                for i in range(batch_size):
+                    ids = inputs['ids'][i].cpu().numpy()
+                    try:
+                        mask = np.argwhere(ids == self.config.mask_token_ids)[0][0]
+                    except:
+                        mask = 0
+                    
+                    masks.append(mask)
+                mask_hidden = outputs_words[tensor_range, torch.tensor(masks)] # (b, h)
+                return mask_hidden, topk_hidden
+
             else:
                 masks = []
                 for i in range(batch_size):
