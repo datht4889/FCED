@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.functional import normalize
-from torch.optim import AdamW, SGD
+from torch.optim import AdamW
 from utils import *
-from configs import Config
+from configs import parse_arguments
 from model import BertED
 from tqdm import tqdm
 from exemplars import Exemplars
@@ -17,8 +17,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
-from sam import *
-from moo import *
+from sam import SAM
 
 
 
@@ -71,16 +70,7 @@ def train(local_rank, args):
     optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999)) #TODO: Hyper parameters
     if args.sam:
             base_optimizer = AdamW
-            if args.sam_optimizer=='SAM':
-                optimizer = SAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
-            elif args.sam_optimizer=='ASAM':
-                optimizer = ASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
-            elif args.sam_optimizer=='ESAM':
-                optimizer = ESAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
-            elif args.sam_optimizer=='GCSAM':
-                optimizer = GCSAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
-            elif args.sam_optimizer=='LookbehindASAM':
-                optimizer = LookbehindASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+            optimizer = SAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
     # if args.amp:
         # model, optimizer = amp.initialize(model, optimizer, opt_level="O1") 
     if args.parallel == 'DDP':
@@ -119,18 +109,7 @@ def train(local_rank, args):
         prev_learned_types = state_dict['prev_learned_types']
     if args.early_stop:
         e_pth = "./checkpoints/" + args.log_name + ".pth"
-
-
-    best_logger = open("./LOSS_LOG.txt", 'a')
-    best_logger.writelines(f"MOO:  {args.mul_task_type}, SAM   {args.sam_optimizer}")
-    best_logger.write('\n')
-    # parameters = [param for param in model.input_map.parameters()]
-    # parameters = [param for param in model.parameters()]
-        
     for stage in task_idx:
-
-        best_loss_ce, best_loss_aug, best_loss_fd, best_loss_pd = 1e9, 1e9, 1e9, 1e9
-
         # if stage > 0:
         #     break
         logger.info(f"Stage {stage}")
@@ -224,6 +203,7 @@ def train(local_rank, args):
                 # else:
                 return_dict = model(train_x, train_masks, train_span)
                 outputs, context_feat, trig_feat = return_dict['outputs'], return_dict['context_feat'], return_dict['trig_feat']
+
                 sim_event_loss = 0
                 if args.sim_event_type:
                     extended_event_type_reps = []
@@ -416,7 +396,7 @@ def train(local_rank, args):
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.first_step(zero_grad=True)
-                    
+
                     return_dict = model(train_x, train_masks, train_span)
                     outputs, context_feat, trig_feat = return_dict['outputs'], return_dict['context_feat'], return_dict['trig_feat']
 
@@ -597,53 +577,13 @@ def train(local_rank, args):
                             loss_pd = -torch.mean(torch.sum(prev_p * p, dim = -1), dim = 0)
                         else:
                             loss_pd = 0
-
                         # loss_pd = criterion_pd(torch.cat([item / T for item in outputs]), torch.cat([item / T for item in prev_outputs]))
                         if args.dweight_loss and stage > 0:
-                            # loss = loss * (1 - w) + (loss_fd + loss_pd) * w
-                            # loss.backward()
-                            loss_list = [loss, loss_fd, loss_pd]
-                            alpha_w = 1 
-                            loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
-
+                            loss = loss * (1 - w) + (loss_fd + loss_pd) * w
                         else:
-                            # loss = loss + args.alpha * loss_fd + args.beta * loss_pd
-                            # loss_list = [loss, args.alpha * loss_fd, args.beta * loss_pd]
-                            loss_list = [loss, loss_fd, loss_pd]
-                            alpha_w = 1
-                            loss_list = [alpha_w * loss_list[0] + sum(loss_list), alpha_w * loss_list[1] + sum(loss_list), alpha_w * loss_list[2] + sum(loss_list)]
+                            loss = loss + args.alpha * loss_fd + args.beta * loss_pd
 
-                        if args.mul_task_type == 'PCGrad':
-                            mul_loss = PCGrad(
-                                device=device,
-                                n_tasks=len(loss_list),
-                            )
-                        if args.mul_task_type == 'IMTLG':
-                            mul_loss = IMTLG(
-                                device=device,
-                                n_tasks=len(loss_list),
-                            )
-                        
-                        
-                        if args.mul_task_type == 'MGDA':
-                            mul_loss = MGDA(
-                                device=device,
-                                n_tasks=len(loss_list),
-                            )   
-
-                        if args.mul_task_type == 'NashMTL':
-                            mul_loss = NashMTL(n_tasks=len(loss_list), device=device)
-                            
-                        if args.mul_task_type == 'FairGrad':
-                            mul_loss = FairGrad(n_tasks=len(loss_list), device=device)
-
-                        if args.mul_task_type == 'ExcessMTL':
-                            mul_loss = ExcessMTL(n_tasks=len(loss_list), device=device)
-
-                        parameters = [p for p in model.parameters() if p.requires_grad ]
-                        loss, alpha = mul_loss(losses=loss_list, shared_parameters=parameters)
-                    else:
-                        loss.backward()
+                    loss.backward()
                     optimizer.second_step(zero_grad=True)
                     
 
@@ -659,38 +599,9 @@ def train(local_rank, args):
             logger.info(f'loss_pd: {loss_pd}')
             logger.info(f'loss_all: {loss}')
 
-            #### ADD BEST LOGGER ####
-            if loss_ce < best_loss_ce:
-                best_loss_ce = loss_ce
-            if loss_ce < best_loss_aug:
-                best_loss_aug = loss_ce
-            if loss_ce < best_loss_fd:
-                best_loss_fd = loss_ce
-            if loss_ce < best_loss_pd:
-                best_loss_pd = loss_ce 
-            #########################
-
-
             if ((ep + 1) % args.eval_freq == 0 and args.early_stop) or (ep + 1) == args.epochs: # TODO TODO
-
-                #### BEST TRAINING LOSS ####
-                best_logger.writelines(f"Task_ID:  {stage}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best CE: {best_loss_ce}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best AUG: {best_loss_aug}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best FD: {best_loss_fd}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best PD: {best_loss_pd}")
-                best_logger.writelines("----------------------------------------------")
-                best_logger.write('\n') 
-                ###########################
-
                 # Evaluation process
                 logger.info("Evaluation process")
-                best_logger.writelines("Evaluation process")
-                best_logger.write('\n') 
                 model.eval()
                 with torch.no_grad():
                     if args.single_label:
@@ -733,8 +644,6 @@ def train(local_rank, args):
                         else:
                             no_better += 1
                             logger.info(f'No better: {no_better}/{args.patience}')
-                            best_logger.writelines(f'No better: {no_better}/{args.patience}')
-                            best_logger.write('\n')
                         # if no_better >= args.patience:
                         #     logger.info("Early stopping with dev_score: " + str(dev_score))
                         #     logger.info(f'marco F1 {micro_F1}')
@@ -751,16 +660,6 @@ def train(local_rank, args):
                         dev_scores_ls.append(dev_score if dev_score else micro_F1)
                         logger.info(f"Dev scores list: {dev_scores_ls}")
                         logger.info(f"bc:{bc}")
-
-                        best_logger.writelines("Early stopping with dev_score: " + str(dev_score))
-                        best_logger.write('\n')
-                        best_logger.writelines(f'marco F1 {micro_F1}')
-                        best_logger.write('\n')
-                        best_logger.writelines(f"Dev scores list: {dev_scores_ls}")
-                        best_logger.write('\n')
-                        best_logger.writelines(f"bc:{bc}")
-                        best_logger.write('\n')
-
                     
 
 
@@ -784,7 +683,7 @@ def train(local_rank, args):
 
 
 if __name__ == "__main__":
-    args = Config()
+    args = parse_arguments()
     if args.parallel == 'DDP':
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = "29500"
