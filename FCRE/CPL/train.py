@@ -433,6 +433,8 @@ class Manager(object):
         memory_samples = {}
         data_generation = []
         seen_proto = []
+        current_relations_by_task = []
+        all_cur_acc_by_task = []
         
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
 
@@ -514,6 +516,19 @@ class Manager(object):
             for rel in seen_relations:
                 seen_relid.append(self.rel2id[rel])
             
+
+            # Eval all current tasks
+            cur_acc_by_task = []
+            current_relations_by_task.append(current_relations)
+            for cur_rel in current_relations_by_task:
+                test_data_initialize_cur_by_task = []
+                for rel in cur_rel:
+                    test_data_initialize_cur_by_task += test_data[rel]
+                cur_acc_by_task.append(self.eval_encoder_proto(encoder, seen_proto, seen_relid, test_data_initialize_cur_by_task))
+            all_cur_acc_by_task.append(cur_acc_by_task)
+            print('all_cur_acc_by_task: ', all_cur_acc_by_task)
+            logger.info(f"all_cur_acc_by_task: {all_cur_acc_by_task}")
+
             # Eval current task and history task
             test_data_initialize_cur, test_data_initialize_seen = [], []
             for rel in current_relations:
