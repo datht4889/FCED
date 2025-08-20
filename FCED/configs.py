@@ -18,7 +18,6 @@ def parse_arguments():
     parser.add_argument('--dataset', default='ACE', choices=['MAVEN', 'ACE'])
     parser.add_argument('--stream-root', default='./data_incremental', type=str)
     parser.add_argument('--max_seqlen', default=120)
-    parser.add_argument('--adamw_eps', default=1e-7)
     parser.add_argument('--fixed-enum', default=True, type=bool, help="whether to fix the exemplar number")
     parser.add_argument('--enum', default=1, type=int, help="When 'fixed-num' == False, indicates the the whole memory size\
                                                             when 'fixed-num' == True, indicates every class's exemplar num")
@@ -43,8 +42,6 @@ def parse_arguments():
     parser.add_argument('--log-name', default='temp')
     parser.add_argument('--data-root', default='./data_incremental', type=str)
     parser.add_argument('--backbone', default='bert-base-uncased', help='Feature extractor')
-    parser.add_argument('--lr',type=float, default=2e-5)
-    parser.add_argument('--decay', type=float, default=1e-4, help="")
     parser.add_argument('--no-freeze-bert', action='store_true')
     parser.add_argument('--dweight_loss', action='store_true')
     parser.add_argument('--alpha', type=float, default=2.0)
@@ -69,9 +66,17 @@ def parse_arguments():
     parser.add_argument('--llm-augment', action="store_true")
     parser.add_argument('--llm-augment-times', type=int, default=5)
     parser.add_argument('--sim-event-type', action="store_true")
+
+    # SAM Optimizer
+    parser.add_argument('--lr',type=float, default=2e-5)
+    parser.add_argument('--decay', type=float, default=1e-4, help="")
+    parser.add_argument('--adamw_eps', default=1e-7)
     parser.add_argument('--sam', action="store_true")
-    parser.add_argument('--sam-type', type=str, default="current")
+    parser.add_argument('--sam-optimizer', type=str, default="SAM", choices=["SAM", "ASAM", "GCSAM", "ESAM", "LookbehindASAM"])
+    parser.add_argument('--sam-type', type=str, default="current", choices=["current", "full"])
     parser.add_argument('--rho', type=float, default=0.1)
+
+
     parser.add_argument('--skip-first-cl', choices=["ucl", "tlcl", "ucl+tlcl", "none"], default="none")
     parser.add_argument('--method', type=str)
     args = parser.parse_args()

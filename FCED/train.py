@@ -17,7 +17,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
-from sam import SAM
+from sam import *
 
 
 
@@ -69,8 +69,17 @@ def train(local_rank, args):
     model.to(device)
     optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999)) #TODO: Hyper parameters
     if args.sam:
-            base_optimizer = AdamW
+        base_optimizer = AdamW
+        if args.sam_optimizer == "SAM":
             optimizer = SAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+        elif args.sam_optimizer == "ASAM":
+            optimizer = ASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+        elif args.sam_optimizer == "GCSAM":
+            optimizer = GCSAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+        elif args.sam_optimizer == "ESAM":
+            optimizer = ESAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+        elif args.sam_optimizer == "LookbehindASAM":
+            optimizer = LookbehindASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
     # if args.amp:
         # model, optimizer = amp.initialize(model, optimizer, opt_level="O1") 
     if args.parallel == 'DDP':
@@ -658,7 +667,7 @@ def train(local_rank, args):
                         logger.info("Early stopping with dev_score: " + str(dev_score))
                         logger.info(f'marco F1 {micro_F1}')
                         dev_scores_ls.append(dev_score if dev_score else micro_F1)
-                        logger.info(f"Dev scores list: {dev_scores_ls}")
+                        logger.info(f"Dev scores list: {[100*round(x, 4) for x in dev_scores_ls]}")
                         logger.info(f"bc:{bc}")
                     
 
