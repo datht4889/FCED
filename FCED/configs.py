@@ -71,7 +71,7 @@ def parse_arguments():
     parser.add_argument('--decay', type=float, default=1e-4, help="")
     parser.add_argument('--adamw_eps', default=1e-7)
     parser.add_argument('--sam', action="store_true")
-    parser.add_argument('--sam-optimizer', type=str, default="SAM", choices=["SAM", "ASAM", "GCSAM", "ESAM", "LookbehindASAM"])
+    parser.add_argument('--sam-optimizer', type=str, default="SAM", choices=["SAM", "ASAM", "FriendlySAM", "GCSAM", "ESAM", "LookbehindASAM"])
     parser.add_argument('--sam-type', type=str, default="current", choices=["current", "full"])
     parser.add_argument('--rho', type=float, default=0.1)
 

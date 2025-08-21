@@ -28,8 +28,10 @@ python train.py \
     --tlcl \
     --ucl \
     --skip-first-cl ucl+tlcl \
-    --perm-id 0 \
+    --perm-id 1 \
     --aug-dropout-times 0 \
     --sam \
     --sam-type current \
-    --rho 0.05
+    --rho 0.05 \
+    --llm-augment \
+    --llm-augment-times 5

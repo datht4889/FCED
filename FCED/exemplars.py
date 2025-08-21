@@ -8,6 +8,9 @@ from transformers import AutoTokenizer
 from openai import OpenAI
 import json
 import os
+import json
+from dotenv import load_dotenv
+load_dotenv()
 
 
 args = parse_arguments()
@@ -102,11 +105,32 @@ def llm_augment(x: list[int], y: list[int], span: list[list[int]], label2idx):
     event_type = LABEL2EVENT_TYPE[args.dataset][idx2label[y[0]]]
     span = span[0]
     trigger = tokenizer.decode(x[span[0]:span[1] + 1])
-    
     prompt = PROMPT.format(context=context, trigger=trigger, event_type=event_type, n=args.llm_augment_times)
 
     augmented_samples = api_call(prompt)
+    
+    augmented_json_path = f'generated_data/{args.dataset}/{args.shot_num}shot/perm{args.perm_id}/augmented_samples.json'
+    os.makedirs(os.path.dirname(augmented_json_path), exist_ok=True)
+    key_to_write = f'{context}/{trigger}/{event_type}'
 
+    # Load existing JSON if available
+    if os.path.exists(augmented_json_path):
+        with open(augmented_json_path, 'r') as f:
+            augmented_json = json.load(f)
+    else:
+        augmented_json = {}
+
+    # Check for duplicate key
+    if key_to_write in augmented_json:
+        print(f"[Warning] Duplicate key detected: {key_to_write}")
+        import pdb
+        pdb.set_trace()
+
+    augmented_json[key_to_write] = augmented_samples
+
+    # Save back to file
+    with open(augmented_json_path, 'w') as f:
+        json.dump(augmented_json, f, indent=2, ensure_ascii=False)
 
     max_seqlen = len(x)
     augmented_x, augmented_y, augmented_mask, augmented_span = [], [], [], []
@@ -124,7 +148,14 @@ def llm_augment(x: list[int], y: list[int], span: list[list[int]], label2idx):
             pass
     return augmented_x, augmented_y, augmented_mask, augmented_span
 
-
+def get_generated_samples(context, trigger, event_type):
+    with open(f'generated_data/{args.dataset}/{args.shot_num}shot/perm{args.perm_id}/augmented_samples.json', 'r') as f:
+        augmented_json = json.load(f)
+    
+    if f'{context}/{trigger}/{event_type}' in augmented_json:
+        return augmented_json[f'{context}/{trigger}/{event_type}']
+    else:
+        return []
 
 
 
