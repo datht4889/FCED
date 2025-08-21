@@ -74,6 +74,8 @@ def train(local_rank, args):
             optimizer = SAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
         elif args.sam_optimizer == "ASAM":
             optimizer = ASAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
+        elif args.sam_optimizer == "FriendlySAM":
+            optimizer = FriendlySAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
         elif args.sam_optimizer == "GCSAM":
             optimizer = GCSAM(params=model.parameters(), base_optimizer=base_optimizer, rho=args.rho, adaptive=True, lr=args.lr, weight_decay=args.decay, eps=args.adamw_eps, betas=(0.9, 0.999))
         elif args.sam_optimizer == "ESAM":
