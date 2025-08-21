@@ -598,6 +598,7 @@ if __name__ == '__main__':
     config.distill = args.distill
     config.distill_type = args.distill_type        
     config.distill_alpha = args.distill_alpha
+    config.distill_top_k = args.distill_top_k
     
 
     print("CPL MMI Start")
@@ -610,6 +611,7 @@ if __name__ == '__main__':
     print(f'Distillation: {config.distill}')
     print(f'Distillation type: {config.distill_type}')  
     print(f'Distillation alpha: {config.distill_alpha}')
+    print(f'Distillation top_k: {config.distill_top_k}')
 
     # config
     print('#############params############')
