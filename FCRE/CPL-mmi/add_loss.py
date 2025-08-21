@@ -1041,7 +1041,7 @@ class Distiller(nn.Module):
 
         return new_logits_student, new_logits_teacher    
 
-
+## Feature-level Distillation
 class RKD(Distiller):
     def __init__(self, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()
@@ -1132,7 +1132,6 @@ class RKD(Distiller):
         loss = self.rkd_angle(logits_student, logits_teacher) + self.rkd_distance(logits_student, logits_teacher)
         return loss
 
-
 class KLDivAndAngleLoss(Distiller):
     def __init__(self, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()
@@ -1208,6 +1207,7 @@ class KLDivAndAngleLoss(Distiller):
 
         return kl_loss + angle_loss
 
+## Predict-level Distillation
 class OFA(Distiller):
     def __init__(self, eps: float = 1.0, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()
@@ -1303,8 +1303,6 @@ class WKD(Distiller):
         ws_distance = (flow * cost_matrix).sum(-1).sum(-1)
         ws_distance = ws_distance.mean()
         return ws_distance
-
-
 
 class DKD(Distiller):
     """

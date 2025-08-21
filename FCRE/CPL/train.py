@@ -148,10 +148,11 @@ class Manager(object):
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
         if is_memory and self.config.distill and self.config.distill_type != 'none':
+            predict_distill_loss_fn = OFA(device=self.config.device)
             if self.config.distill_type == 'RKD':
-                distill_loss_fn = RKD(device=self.config.device)
+                feature_distill_loss_fn = RKD(device=self.config.device)
             elif self.config.distill_type == 'KLDivAndAngleLoss':
-                distill_loss_fn = KLDivAndAngleLoss(device=self.config.device)
+                feature_distill_loss_fn = KLDivAndAngleLoss(device=self.config.device)
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
@@ -162,8 +163,11 @@ class Manager(object):
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
                     old_hidden, old_topk_hidden = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    seen_proto = seen_proto.to(self.config.device)
+                    logits = -self._edist(hidden, seen_proto)
+                    old_logits = -self._edist(old_hidden, seen_proto)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
-                        distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
+                        distill_loss = feature_distill_loss_fn(topk_hidden, old_topk_hidden) + predict_distill_loss_fn(logits, old_logits)
                         loss = loss + distill_loss * self.config.distill_alpha
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
@@ -185,8 +189,11 @@ class Manager(object):
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
                         old_hidden, old_topk_hidden = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        seen_proto = seen_proto.to(self.config.device)
+                        logits = -self._edist(hidden, seen_proto)
+                        old_logits = -self._edist(old_hidden, seen_proto)
                         if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
-                            distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
+                            distill_loss = feature_distill_loss_fn(topk_hidden, old_topk_hidden) + predict_distill_loss_fn(logits, old_logits)
                             loss = loss + distill_loss * self.config.distill_alpha
                         else:
                             raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
