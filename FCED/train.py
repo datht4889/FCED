@@ -416,8 +416,8 @@ def train(local_rank, args):
                     loss.backward()
                     optimizer.first_step(zero_grad=True)
 
-                    return_dict = model(train_x, train_masks, train_span)
-                    outputs, context_feat, trig_feat = return_dict['outputs'], return_dict['context_feat'], return_dict['trig_feat']
+                    return_dict = model(train_x, train_masks, train_span, top_k=args.distill_topk)
+                    outputs, context_feat, trig_feat, topk_context_feature = return_dict['outputs'], return_dict['context_feat'], return_dict['trig_feat'], return_dict['topk_context_feature']
 
                     sim_event_loss = 0
                     if args.sim_event_type:
