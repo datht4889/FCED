@@ -218,19 +218,6 @@ class EncodingModel(nn.Module):
                 mask_hidden_1 = outputs_words[tensor_range, torch.tensor(masks1)] # (b, h)
                 mask_hidden_2 = outputs_words[tensor_range, torch.tensor(masks2)] # (b, h)
                 return mask_hidden_1, mask_hidden_2    
-            
-            elif is_distill:
-                masks = []
-                for i in range(batch_size):
-                    ids = inputs['ids'][i].cpu().numpy()
-                    try:
-                        mask = np.argwhere(ids == self.config.mask_token_ids)[0][0]
-                    except:
-                        mask = 0
-                    
-                    masks.append(mask)
-                mask_hidden = outputs_words[tensor_range, torch.tensor(masks)] # (b, h)
-                return mask_hidden, topk_hidden
 
             else:
                 masks = []
@@ -243,6 +230,9 @@ class EncodingModel(nn.Module):
                     
                     masks.append(mask)
                 mask_hidden = outputs_words[tensor_range, torch.tensor(masks)] # (b, h)
+
+                if is_distill:
+                    return mask_hidden, topk_hidden
                 return mask_hidden
             # lm_head_output = self.lm_head(mask_hidden) # (b, max_length, vocab_size)
             # return mask_hidden , average_outputs_words
