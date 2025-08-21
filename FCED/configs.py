@@ -46,7 +46,6 @@ def parse_arguments():
     parser.add_argument('--dweight_loss', action='store_true')
     parser.add_argument('--alpha', type=float, default=2.0)
     parser.add_argument('--beta', type=float, default=3.0)
-    parser.add_argument('--distill', required=True, choices=["fd", "pd", "mul", "none"])
     parser.add_argument('--rep-aug', required=True, choices=["none", "mean", "relative"])
     parser.add_argument('--gamma', type=float, default=1)
     parser.add_argument('--theta',type=float, default=6)
@@ -76,6 +75,9 @@ def parse_arguments():
     parser.add_argument('--sam-type', type=str, default="current", choices=["current", "full"])
     parser.add_argument('--rho', type=float, default=0.1)
 
+    # Distillation
+    parser.add_argument('--distill', required=True, choices=["fd", "pd", "mul", "none"])
+    parser.add_argument('--distill-topk', type=int, default=None)
 
     parser.add_argument('--skip-first-cl', choices=["ucl", "tlcl", "ucl+tlcl", "none"], default="none")
     parser.add_argument('--method', type=str)

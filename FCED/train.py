@@ -210,8 +210,8 @@ def train(local_rank, args):
                 # if args.dataset == "ACE":
                 #     return_dict = model(train_x, train_masks)
                 # else:
-                return_dict = model(train_x, train_masks, train_span)
-                outputs, context_feat, trig_feat = return_dict['outputs'], return_dict['context_feat'], return_dict['trig_feat']
+                return_dict = model(train_x, train_masks, train_span, top_k=args.distill_topk)
+                outputs, context_feat, trig_feat, topk_context_feature = return_dict['outputs'], return_dict['context_feat'], return_dict['trig_feat'], return_dict['topk_context_feature']
 
                 sim_event_loss = 0
                 if args.sim_event_type:
@@ -361,8 +361,8 @@ def train(local_rank, args):
                 if stage > 0 and args.distill != "none":
                     prev_model.eval()
                     with torch.no_grad():
-                        prev_return_dict = prev_model(train_x, train_masks, train_span)
-                        prev_outputs, prev_feature = prev_return_dict['outputs'], prev_return_dict['context_feat']
+                        prev_return_dict = prev_model(train_x, train_masks, train_span, top_k=args.distill_topk)
+                        prev_outputs, prev_feature, prev_topk_context_feature = prev_return_dict['outputs'], prev_return_dict['context_feat'], prev_return_dict['topk_context_feature']
 
                         if args.joint_da_loss == "dist" or args.joint_da_loss == "mul":
                             outputs = torch.cat([outputs, da_outputs])
@@ -372,12 +372,18 @@ def train(local_rank, args):
                             prev_outputs, prev_feature = torch.cat([prev_outputs, prev_outputs_cl]), torch.cat([prev_feature, prev_feature_cl])
                     # prev_invalid_mask_op = torch.BoolTensor([item not in prev_learned_types for item in range(args.class_num)]).to(device)
                     prev_valid_mask_op = torch.nonzero(torch.BoolTensor([item in prev_learned_types for item in range(args.class_num + 1)]).to(device))
+
                     if args.distill == "fd" or args.distill == "mul":
-                        prev_feature = normalize(prev_feature.view(-1, prev_feature.shape[-1]), dim=-1)
-                        cur_feature = normalize(context_feat.view(-1, prev_feature.shape[-1]), dim=-1)
+                        if args.distill_topk is not None:
+                            prev_feature = normalize(prev_topk_context_feature.view(-1, prev_topk_context_feature.shape[-1]), dim=-1)
+                            cur_feature = normalize(topk_context_feature.view(-1, prev_topk_context_feature.shape[-1]), dim=-1)
+                        else:
+                            prev_feature = normalize(prev_feature.view(-1, prev_feature.shape[-1]), dim=-1)
+                            cur_feature = normalize(context_feat.view(-1, prev_feature.shape[-1]), dim=-1)
                         loss_fd = criterion_fd(prev_feature, cur_feature, torch.ones(prev_feature.size(0)).to(device)) # TODO: Don't know whether the code is right
                     else:
                         loss_fd = 0
+
                     if args.distill == "pd" or args.distill == "mul":
                         T = args.temperature
                         if args.leave_zero:
@@ -390,6 +396,7 @@ def train(local_rank, args):
                         loss_pd = -torch.mean(torch.sum(prev_p * p, dim = -1), dim = 0)
                     else:
                         loss_pd = 0
+
                     # loss_pd = criterion_pd(torch.cat([item / T for item in outputs]), torch.cat([item / T for item in prev_outputs]))
                     if args.dweight_loss and stage > 0:
                         if (not args.sam) or (args.sam_type == "full"):
@@ -397,6 +404,7 @@ def train(local_rank, args):
                     else:
                         if (not args.sam) or (args.sam_type == "full"):
                             loss = loss + args.alpha * loss_fd + args.beta * loss_pd
+
                 if not args.sam:
                     optimizer.zero_grad()
                     loss.backward()
@@ -557,8 +565,8 @@ def train(local_rank, args):
                     if stage > 0 and args.distill != "none":
                         prev_model.eval()
                         with torch.no_grad():
-                            prev_return_dict = prev_model(train_x, train_masks, train_span)
-                            prev_outputs, prev_feature = prev_return_dict['outputs'], prev_return_dict['context_feat']
+                            prev_return_dict = prev_model(train_x, train_masks, train_span, top_k=args.distill_topk)
+                            prev_outputs, prev_feature, prev_topk_context_feature = prev_return_dict['outputs'], prev_return_dict['context_feat'], prev_return_dict['topk_context_feature']
 
                             if args.joint_da_loss == "dist" or args.joint_da_loss == "mul":
                                 outputs = torch.cat([outputs, da_outputs])
@@ -568,12 +576,18 @@ def train(local_rank, args):
                                 prev_outputs, prev_feature = torch.cat([prev_outputs, prev_outputs_cl]), torch.cat([prev_feature, prev_feature_cl])
                         # prev_invalid_mask_op = torch.BoolTensor([item not in prev_learned_types for item in range(args.class_num)]).to(device)
                         prev_valid_mask_op = torch.nonzero(torch.BoolTensor([item in prev_learned_types for item in range(args.class_num + 1)]).to(device))
+
                         if args.distill == "fd" or args.distill == "mul":
-                            prev_feature = normalize(prev_feature.view(-1, prev_feature.shape[-1]), dim=-1)
-                            cur_feature = normalize(context_feat.view(-1, prev_feature.shape[-1]), dim=-1)
+                            if args.distill_topk is not None:
+                                prev_feature = normalize(prev_topk_context_feature.view(-1, prev_topk_context_feature.shape[-1]), dim=-1)
+                                cur_feature = normalize(topk_context_feature.view(-1, prev_topk_context_feature.shape[-1]), dim=-1)
+                            else:
+                                prev_feature = normalize(prev_feature.view(-1, prev_feature.shape[-1]), dim=-1)
+                                cur_feature = normalize(context_feat.view(-1, prev_feature.shape[-1]), dim=-1)
                             loss_fd = criterion_fd(prev_feature, cur_feature, torch.ones(prev_feature.size(0)).to(device)) # TODO: Don't know whether the code is right
                         else:
                             loss_fd = 0
+                        
                         if args.distill == "pd" or args.distill == "mul":
                             T = args.temperature
                             if args.leave_zero:
@@ -586,6 +600,7 @@ def train(local_rank, args):
                             loss_pd = -torch.mean(torch.sum(prev_p * p, dim = -1), dim = 0)
                         else:
                             loss_pd = 0
+                        
                         # loss_pd = criterion_pd(torch.cat([item / T for item in outputs]), torch.cat([item / T for item in prev_outputs]))
                         if args.dweight_loss and stage > 0:
                             loss = loss * (1 - w) + (loss_fd + loss_pd) * w

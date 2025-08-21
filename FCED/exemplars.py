@@ -9,10 +9,12 @@ from openai import OpenAI
 import json
 import os
 
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 args = parse_arguments()
 tokenizer = AutoTokenizer.from_pretrained(args.backbone)
+if args.llm_augment:
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
 
 LABEL2EVENT_TYPE = {
     "MAVEN": {

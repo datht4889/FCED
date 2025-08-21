@@ -1,2 +1,4 @@
 .env
 FCRE/CPL/logs/
+.vscode
+**/__pycache__/

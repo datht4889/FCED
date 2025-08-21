@@ -1,0 +1,35 @@
+python train.py \
+    --device cpu \
+    --data-root ./augmented_data \
+    --stream-root ./augmented_data \
+    --dataset ACE \
+    --backbone bert-base-uncased \
+    --lr 2e-5 \
+    --decay 1e-4 \
+    --no-freeze-bert \
+    --shot-num 10 \
+    --batch-size 4 \
+    --device cuda:0 \
+    --log \
+    --log-dir ./sam/log_incremental/temp7_submax/first_wo_UCL+TCL/ \
+    --tb-dir ./sam/log_tensorboard/02-10-nomap-clreps\
+    --log-name a_shuffle_lnone_r_5 \
+    --dweight_loss \
+    --rep-aug mean \
+    --distill mul \
+    --epoch 1 \
+    --class-num 10 \
+    --single-label \
+    --cl-aug shuffle \
+    --aug-repeat-times 5 \
+    --joint-da-loss none \
+    --sub-max \
+    --cl_temp 0.07 \
+    --tlcl \
+    --ucl \
+    --skip-first-cl ucl+tlcl \
+    --perm-id 0 \
+    --aug-dropout-times 0 \
+    --sam \
+    --sam-type current \
+    --rho 0.05
