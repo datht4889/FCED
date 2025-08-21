@@ -158,8 +158,6 @@ class Manager(object):
                 distill_loss_fn = WKD(device=self.config.device)
             elif self.config.distill_type == 'KLDivAndAngleLoss':
                 distill_loss_fn = KLDivAndAngleLoss(device=self.config.device)
-            elif self.config.distill_type == 'RKDForTopk':
-                distill_loss_fn = RKDForTopk(device=self.config.device)
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
@@ -173,7 +171,7 @@ class Manager(object):
                     seen_proto = seen_proto.to(self.config.device)
                     # logits = -self._edist(hidden, seen_proto)
                     # old_logits = -self._edist(old_hidden, seen_proto)
-                    if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD', 'KLDivAndAngleLoss', 'RKDForTopk']:
+                    if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD', 'KLDivAndAngleLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden, labels, seen_relid, self.config.total_class)
                         loss = loss + distill_loss * self.config.distill_alpha
                     else:
@@ -199,7 +197,7 @@ class Manager(object):
                         seen_proto = seen_proto.to(self.config.device)
                         logits = -self._edist(hidden, seen_proto)
                         old_logits = -self._edist(old_hidden, seen_proto)
-                        if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD', 'KLDivAndAngleLoss', 'RKDForTopk']:
+                        if self.config.distill_type in ['DKD', 'OFA', 'WKD', 'RKD', 'KLDivAndAngleLoss']:
                             distill_loss = distill_loss_fn(hidden, old_hidden, labels, seen_relid, self.config.total_class)
                             loss = loss + distill_loss * self.config.distill_alpha
                         else:
