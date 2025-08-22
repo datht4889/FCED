@@ -167,7 +167,7 @@ class Manager(object):
                     logits = -self._edist(hidden, seen_proto)
                     old_logits = -self._edist(old_hidden, seen_proto)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
-                        distill_loss = feature_distill_loss_fn(topk_hidden, old_topk_hidden) + predict_distill_loss_fn(logits, old_logits)
+                        distill_loss = feature_distill_loss_fn(topk_hidden, old_topk_hidden) + predict_distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
                         loss = loss + distill_loss * self.config.distill_alpha
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
@@ -193,7 +193,7 @@ class Manager(object):
                         logits = -self._edist(hidden, seen_proto)
                         old_logits = -self._edist(old_hidden, seen_proto)
                         if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
-                            distill_loss = feature_distill_loss_fn(topk_hidden, old_topk_hidden) + predict_distill_loss_fn(logits, old_logits)
+                            distill_loss = feature_distill_loss_fn(topk_hidden, old_topk_hidden) + predict_distill_loss_fn(logits, old_logits, labels, seen_relid, self.config.total_class)
                             loss = loss + distill_loss * self.config.distill_alpha
                         else:
                             raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
