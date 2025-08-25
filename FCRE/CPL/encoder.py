@@ -233,7 +233,7 @@ class EncodingModel(nn.Module):
                 mask_hidden = outputs_words[tensor_range, torch.tensor(masks)] # (b, h)
 
                 if is_distill:
-                    return mask_hidden, topk_hidden_indices
+                    return mask_hidden, outputs_words, topk_hidden_indices
                 return mask_hidden
             # lm_head_output = self.lm_head(mask_hidden) # (b, max_length, vocab_size)
             # return mask_hidden , average_outputs_words
