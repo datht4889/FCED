@@ -529,6 +529,7 @@ class Manager(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--task_name", default="Tacred", type=str)
+    parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--use_llm", action = 'store_true', default=False)
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
@@ -556,6 +557,7 @@ if __name__ == '__main__':
     else:
         config = Config('config.ini')
     config.task_name = args.task_name
+    config.device = args.device
     config.use_llm = args.use_llm
     config.num_k = args.num_k
     config.num_gen = args.num_gen

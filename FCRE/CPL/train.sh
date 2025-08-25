@@ -3,10 +3,13 @@ python train.py --task_name Tacred \
     --num_gen 5 \
     --mixup \
     --SAM \
-    --base_optimizer Adam \
-    --sam_optimizer SAM \
+    --base_optimizer AdamW \
+    --sam_optimizer ASAM \
     --rho 0.05 \
     --decay 0 \
     --distill \
-    --distill_type OFA \
-    --distill_alpha 0.25
+    --distill_type RKD \
+    --distill_alpha 0.25 \
+    --epoch 1 \
+    --epoch_mem 1 \
+    --device cpu

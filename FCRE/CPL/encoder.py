@@ -157,7 +157,7 @@ class EncodingModel(nn.Module):
         if is_distill:
             # attentions_layer: (B, H, S, S)
             # attentions_layer = attention_scores[-1]  # choose layer (e.g., last layer)
-            attentions_layer = torch.stack(attention_scores, dim=0) # averaged-layer attentions
+            attentions_layer = torch.stack(attention_scores, dim=0).mean(dim=0) # averaged-layer attentions
 
             # Column-wise sum over queries (dim=2). Result: (B, H, S)
             col_sum_per_head = attentions_layer.sum(dim=2)
