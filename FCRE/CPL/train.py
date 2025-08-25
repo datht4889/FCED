@@ -161,9 +161,9 @@ class Manager(object):
                     hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
-                    old_hidden, old_outputs_words, _ = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    _, old_outputs_words, _ = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                     old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
-                    topk_hidden = torch.gather(hidden, dim=1, index=topk_hidden_indices)  # (B, k, H)
+                    topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                         loss = loss + distill_loss * self.config.distill_alpha
@@ -181,14 +181,14 @@ class Manager(object):
                     if self.config.use_llm:
                         hidden = encoder(instance['input'])
                     else:
-                        hidden, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
 
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
-                        old_hidden = old_encoder(instance)
-                        old_topk_hidden = torch.gather(old_hidden, dim=1, index=topk_hidden_indices)  # (B, k, H)
-                        topk_hidden = torch.gather(hidden, dim=1, index=topk_hidden_indices)  # (B, k, H)
+                        _, old_outputs_words, _ = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
+                        topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                         if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                             distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                             loss = loss + distill_loss * self.config.distill_alpha
