@@ -295,10 +295,8 @@ class ASAM(torch.optim.Optimizer):
                 eps = t_w
                 eps[...] = p.grad[...]
                 if rho is not None:
-                    print("Using rho", rho)
                     eps.mul_(rho / wgrad_norm)
                 else:
-                    print("Using group rho", group["rho"])
                     eps.mul_(group["rho"] / wgrad_norm)
                 p.add_(eps)
         
