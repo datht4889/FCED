@@ -167,6 +167,8 @@ class Manager(object):
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                         loss = loss + distill_loss * self.config.distill_alpha
+                        optimizer.param_groups[0]['rho'] = distill_loss
+                        print("Setting rho to: ", optimizer.param_groups[0]['rho'])
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
                 if not self.config.SAM:

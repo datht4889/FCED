@@ -286,6 +286,7 @@ class ASAM(torch.optim.Optimizer):
         
         for group in self.param_groups:
             # for n, p in group["params"]:
+            print("Using rho: ", group["rho"])
             for p in group["params"]:
                 if p.grad is None:
                     continue
