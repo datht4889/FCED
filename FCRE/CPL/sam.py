@@ -266,7 +266,7 @@ class ASAM(torch.optim.Optimizer):
         self.state = defaultdict(dict)
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
+    def first_step(self, zero_grad=False, rho=None):
         wgrads = []
         for group in self.param_groups:
             # for n, p in group["params"]:
@@ -286,7 +286,6 @@ class ASAM(torch.optim.Optimizer):
         
         for group in self.param_groups:
             # for n, p in group["params"]:
-            print("Using rho: ", group["rho"])
             for p in group["params"]:
                 if p.grad is None:
                     continue
@@ -295,7 +294,12 @@ class ASAM(torch.optim.Optimizer):
                 #     p.grad.mul_(t_w)
                 eps = t_w
                 eps[...] = p.grad[...]
-                eps.mul_(group["rho"] / wgrad_norm)
+                if rho is not None:
+                    print("Using rho", rho)
+                    eps.mul_(rho / wgrad_norm)
+                else:
+                    print("Using group rho", group["rho"])
+                    eps.mul_(group["rho"] / wgrad_norm)
                 p.add_(eps)
         
         if zero_grad:

@@ -167,8 +167,8 @@ class Manager(object):
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                         loss = loss + distill_loss * self.config.distill_alpha
-                        optimizer.param_groups[0]['rho'] = distill_loss
-                        print("Setting rho to: ", optimizer.param_groups[0]['rho'])
+                        distillation_rho = distill_loss
+                        print("Setting rho to: ", distillation_rho)
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
                 if not self.config.SAM:
@@ -179,7 +179,10 @@ class Manager(object):
                 else:
                     optimizer.zero_grad()
                     loss.backward()
-                    optimizer.first_step(zero_grad=True)
+                    if is_memory and self.config.distill and self.config.distill_type != 'none':
+                        optimizer.first_step(zero_grad=True, rho=distillation_rho)
+                    else:
+                        optimizer.first_step(zero_grad=True)
                     if self.config.use_llm:
                         hidden = encoder(instance['input'])
                     else:
