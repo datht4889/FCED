@@ -118,7 +118,7 @@ class EncodingModel(nn.Module):
 
         if is_distill:
             # attentions_layer: (B, H, S, S)
-            attentions_layer = attention_scores[-1]  # choose layer (e.g., last layer)
+            attentions_layer = attention_scores[-1]  # choose last layer
 
             # Column-wise sum over queries (dim=2). Result: (B, H, S)
             col_sum_per_head = attentions_layer.sum(dim=2)
@@ -143,8 +143,8 @@ class EncodingModel(nn.Module):
             B, _, H = outputs_words.size()
 
             # 8) gather hidden vectors for top-k indices -> (B, k, H)
-            idx_expanded = topk_indices.unsqueeze(-1).expand(-1, -1, H)   # (B, k, H)
-            topk_hidden = torch.gather(outputs_words, dim=1, index=idx_expanded)  # (B, k, H)
+            topk_hidden_indices = topk_indices.unsqueeze(-1).expand(-1, -1, H)   # (B, k, H)
+            # topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
 
         # return [CLS] hidden
         if pattern == 'cls' or pattern == 'softprompt':
@@ -165,7 +165,7 @@ class EncodingModel(nn.Module):
             mask_hidden = outputs_words[tensor_range, torch.tensor(masks)] # (b, h)
             lm_head_output = self.lm_head(mask_hidden) # (b, max_length, vocab_size)
             if is_distill:
-                return mask_hidden, topk_hidden, lm_head_output
+                return mask_hidden, outputs_words, topk_hidden_indices, lm_head_output
             return mask_hidden , lm_head_output
 
         # return e1:e2 hidden

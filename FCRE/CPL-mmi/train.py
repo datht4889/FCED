@@ -153,14 +153,17 @@ class Manager(object):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
                 for k in instance.keys():
                     instance[k] = instance[k].to(self.config.device)
-                hidden, topk_hidden, lmhead_output = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                hidden, outputs_words, topk_hidden_indices, lmhead_output = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
-                    old_hidden, old_topk_hidden,old_lmhead_output = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
+                    topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                         loss = loss + distill_loss * self.config.distill_alpha
+                        self.distill_loss_list.append(distill_loss.item())
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
 
@@ -199,14 +202,17 @@ class Manager(object):
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.first_step(zero_grad=True)
-                    hidden, topk_hidden, lmhead_output = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    hidden, outputs_words, topk_hidden_indices, lmhead_output = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
-                        old_hidden, old_topk_hidden,old_lmhead_output = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
+                        topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                         if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                             distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                             loss = loss + distill_loss * self.config.distill_alpha
+                            self.distill_loss_list.append(distill_loss.item())
                         else:
                             raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
 
