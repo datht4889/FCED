@@ -269,13 +269,13 @@ def gen_data(r2desc, rel2id, sample, n=10, t=0, current_round=None):
     rdesc = r2desc[rname]
     print('####', rname ,'####')
     input = prompt_input(rname, rdesc, sample=sample, n=n)
-    print(input)
+    # print(input)
     # output = gpt(input=input, t=t)
     import json
     with open('data/CFRLTacred/syn_data.json', 'r') as f:
         syn_data = json.load(f)
     output = syn_data['Round '+str(current_round)][rname]
-    print(output)
+    # print(output)
     try:
         parse_output = parse(rel2id, output)
     except Exception as e:
