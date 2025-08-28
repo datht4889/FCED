@@ -267,6 +267,7 @@ class ASAM(torch.optim.Optimizer):
 
     @torch.no_grad()
     def first_step(self, zero_grad=False, rho=None):
+        print("Rho value in ASAM first step: ", rho)
         wgrads = []
         for group in self.param_groups:
             # for n, p in group["params"]:

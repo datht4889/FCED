@@ -148,6 +148,7 @@ class Manager(object):
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
         if is_memory and self.config.distill and self.config.distill_type != 'none':
+            self.distill_loss_list = []
             if self.config.distill_type == 'RKD':
                 distill_loss_fn = RKD(device=self.config.device)
             elif self.config.distill_type == 'KLDivAndAngleLoss':
@@ -167,6 +168,7 @@ class Manager(object):
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                         loss = loss + distill_loss * self.config.distill_alpha
+                        self.distill_loss_list.append(distill_loss.item())
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
                 if not self.config.SAM:
@@ -177,12 +179,12 @@ class Manager(object):
                 else:
                     optimizer.zero_grad()
                     loss.backward()
-                    if is_memory and self.config.distill and self.config.distill_type != 'none':
-                        distillation_rho = distill_loss*5
+                    if self.distill_loss_list != []:
+                        distillation_rho = sum(self.distill_loss_list)/len(self.distill_loss_list)*5
                         print("Setting rho to: ", distillation_rho)
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
                     else:
-                        optimizer.first_step(zero_grad=True)
+                        optimizer.first_step(zero_grad=True, rho=self.config.rho)
                     if self.config.use_llm:
                         hidden = encoder(instance['input'])
                     else:
