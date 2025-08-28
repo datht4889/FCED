@@ -471,6 +471,8 @@ class Manager(object):
         memory_samples = {}
         data_generation = []
         seen_proto = []
+        self.distill_loss_list = []
+        
         for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations) in enumerate(sampler):
       
