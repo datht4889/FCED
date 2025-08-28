@@ -157,7 +157,7 @@ class Manager(object):
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
-                    old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    old_hidden, old_outputs_words, old_topk_hidden_indices, old_lmhead_output = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                     old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
                     topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
@@ -206,7 +206,7 @@ class Manager(object):
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
-                        old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        old_hidden, old_outputs_words, old_topk_hidden_indices, old_lmhead_output = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                         old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
                         topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                         if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
