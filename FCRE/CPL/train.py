@@ -184,6 +184,7 @@ class Manager(object):
                         print("Setting rho to: ", distillation_rho)
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
                     else:
+                        print("Using config rho: ", self.config.rho)
                         optimizer.first_step(zero_grad=True, rho=self.config.rho)
 
                     if self.config.use_llm:
