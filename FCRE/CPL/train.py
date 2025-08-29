@@ -434,6 +434,7 @@ class Manager(object):
         memory_samples = {}
         data_generation = []
         seen_proto = []
+        self.distill_loss_list = []
         
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
 
