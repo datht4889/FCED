@@ -167,7 +167,7 @@ class Manager(object):
                     topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
-                        loss = loss + distill_loss * self.config.distill_alpha
+                        loss = loss + distill_loss * self.config.distill_loss_weight
                         self.distill_loss_list.append(distill_loss.item())
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
@@ -185,7 +185,7 @@ class Manager(object):
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
                     else:
                         optimizer.first_step(zero_grad=True, rho=self.config.rho)
-                        
+
                     if self.config.use_llm:
                         hidden = encoder(instance['input'])
                     else:
@@ -199,7 +199,7 @@ class Manager(object):
                         topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                         if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
                             distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
-                            loss = loss + distill_loss * self.config.distill_alpha
+                            loss = loss + distill_loss * self.config.distill_loss_weight
                         else:
                             raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
                             
@@ -561,7 +561,7 @@ if __name__ == '__main__':
     # Distillation
     parser.add_argument("--distill", action='store_true', default=False)
     parser.add_argument("--distill_type", default="none", type=str)
-    parser.add_argument("--distill_alpha", default=0.25, type=float)
+    parser.add_argument("--distill_loss_weight", default=0.25, type=float)
     parser.add_argument("--distill_top_k", default=10, type=int)
 
     args = parser.parse_args()
@@ -589,7 +589,7 @@ if __name__ == '__main__':
 
     config.distill = args.distill
     config.distill_type = args.distill_type
-    config.distill_alpha = args.distill_alpha
+    config.distill_loss_weight = args.distill_loss_weight
     config.distill_top_k = args.distill_top_k
 
     print("CPL Start")
@@ -602,7 +602,7 @@ if __name__ == '__main__':
     print(f'decay: {config.decay}')
     print(f'Distillation: {config.distill}')
     print(f'Distillation type: {config.distill_type}')
-    print(f'Distillation alpha: {config.distill_alpha}')
+    print(f'Distillation alpha: {config.distill_loss_weight}')
     print(f'Distillation top_k: {config.distill_top_k}')
 
     # config 
