@@ -185,6 +185,7 @@ class Manager(object):
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
                     else:
                         optimizer.first_step(zero_grad=True, rho=self.config.rho)
+                        
                     if self.config.use_llm:
                         hidden = encoder(instance['input'])
                     else:
