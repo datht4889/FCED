@@ -180,7 +180,8 @@ class Manager(object):
                     optimizer.zero_grad()
                     loss.backward()
                     if self.distill_loss_list != []:
-                        distillation_rho = sum(self.distill_loss_list)/len(self.distill_loss_list)*5
+                        mean_distill_loss = sum(self.distill_loss_list)/len(self.distill_loss_list)
+                        distillation_rho = max(0.05, min(mean_distill_loss * self.config.rho_weight, 0.12))
                         print("Setting rho to: ", distillation_rho)
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
                     else:
@@ -558,6 +559,7 @@ if __name__ == '__main__':
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--SAM_type", default="current", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--rho_weight", default=6, type=float)
     parser.add_argument("--decay", default=0, type=float)
     # Distillation
     parser.add_argument("--distill", action='store_true', default=False)
@@ -585,6 +587,7 @@ if __name__ == '__main__':
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
     config.rho = args.rho
+    config.rho_weight = args.rho_weight
     config.sam_optimizer = args.sam_optimizer
     config.decay = args.decay
 
