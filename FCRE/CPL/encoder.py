@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from transformers import BertModel, BertConfig
-from transformers import RobertaModel
+from transformers import RobertaModel, AutoModel, AutoConfig
 from transformers import BertForMaskedLM
 class EncodingModel(nn.Module):
     def __init__(self, config):
@@ -16,6 +16,9 @@ class EncodingModel(nn.Module):
             # self.lm_head = BertForMaskedLM.from_pretrained(config.bert_path).to(config.device).cls
         elif config.model == 'roberta':
             self.encoder = RobertaModel.from_pretrained(config.roberta_path).to(config.device)
+            self.encoder.resize_token_embeddings(config.vocab_size)
+        elif config.model == 'bge':
+            self.encoder = AutoModel.from_pretrained(config.bge_path).to(config.device)
             self.encoder.resize_token_embeddings(config.vocab_size)
         if config.tune == 'prompt':
             for param in self.encoder.parameters():

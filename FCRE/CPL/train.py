@@ -543,6 +543,7 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model", default="bert", type=str)
     parser.add_argument("--task_name", default="Tacred", type=str)
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--use_llm", action = 'store_true', default=False)
@@ -572,6 +573,7 @@ if __name__ == '__main__':
         config = Config('config_llm.ini')
     else:
         config = Config('config.ini')
+    config.model = args.model
     config.task_name = args.task_name
     config.device = args.device
     config.use_llm = args.use_llm
@@ -597,6 +599,7 @@ if __name__ == '__main__':
     config.distill_top_k = args.distill_top_k
 
     print("CPL Start")
+    print(f'model: {config.model}')
     print(f'task_name: {config.task_name}')
     print(f'mixup: {config.mixup}')
     print(f'base_optimizer: {config.base_optimizer}')
