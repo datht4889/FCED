@@ -543,17 +543,21 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    # model and data
     parser.add_argument("--model", default="bert", type=str)
-    parser.add_argument("--task_name", default="Tacred", type=str)
-    parser.add_argument("--device", default="cuda:0", type=str)
+    parser.add_argument("--output-size", default=768, type=int)
+    parser.add_argument("--max-length", default=256, type=int)
     parser.add_argument("--use_llm", action = 'store_true', default=False)
+    parser.add_argument("--device", default="cuda:0", type=str)
+    parser.add_argument("--task_name", default="Tacred", type=str)
+    # mixup settings
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true')
-    parser.add_argument("--epoch", default=8, type=int) # 8, 10
-    parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
+    parser.add_argument("--epoch", default=8, type=int) # 8, 10
+    parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     # SAM
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
@@ -574,6 +578,9 @@ if __name__ == '__main__':
     else:
         config = Config('config.ini')
     config.model = args.model
+    config.encoder_output_size = args.output_size
+    config.max_length = args.max_length
+
     config.task_name = args.task_name
     config.device = args.device
     config.use_llm = args.use_llm

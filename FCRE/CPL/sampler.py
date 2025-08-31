@@ -2,7 +2,7 @@ import pickle
 import os 
 import random
 import numpy as np
-from transformers import BertTokenizer, RobertaTokenizer, enable_full_determinism
+from transformers import BertTokenizer, RobertaTokenizer, AutoTokenizer, enable_full_determinism
 
 class data_sampler_CFRL(object):
     def __init__(self, config=None, seed=None):
@@ -19,6 +19,14 @@ class data_sampler_CFRL(object):
             self.mask_token = '<mask>' 
             model_path = self.config.roberta_path
             tokenizer_from_pretrained = RobertaTokenizer.from_pretrained
+        elif self.config.model == 'bge':
+            self.mask_token = '[MASK]' 
+            model_path = self.config.roberta_path
+            tokenizer_from_pretrained = AutoTokenizer.from_pretrained
+        elif self.config.model == 'nvembed':
+            self.mask_token = '<mask>' 
+            model_path = self.config.roberta_path
+            tokenizer_from_pretrained = AutoTokenizer.from_pretrained
 
         # tokenizer
         if config.pattern == 'marker':
