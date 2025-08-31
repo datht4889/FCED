@@ -179,7 +179,7 @@ class Manager(object):
                 else:
                     optimizer.zero_grad()
                     loss.backward()
-                    if self.distill_loss_list != []:
+                    if self.distill_loss_list != [] and self.config.dynamic_rho:
                         mean_distill_loss = sum(self.distill_loss_list)/len(self.distill_loss_list)
                         distillation_rho = max(0.05, min(mean_distill_loss * self.config.rho_weight, 0.12))
                         print("Setting rho to: ", distillation_rho)
@@ -564,6 +564,7 @@ if __name__ == '__main__':
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--SAM_type", default="current", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--dynamic-rho", action = 'store_true', default=False)
     parser.add_argument("--rho_weight", default=6, type=float)
     parser.add_argument("--decay", default=0, type=float)
     # Distillation
@@ -596,6 +597,7 @@ if __name__ == '__main__':
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
     config.rho = args.rho
+    config.dynamic_rho = args.dynamic_rho
     config.rho_weight = args.rho_weight
     config.sam_optimizer = args.sam_optimizer
     config.decay = args.decay
