@@ -19,6 +19,14 @@ class data_sampler_CFRL(object):
             self.mask_token = '<mask>' 
             model_path = self.config.roberta_path
             tokenizer_from_pretrained = RobertaTokenizer.from_pretrained
+        elif self.config.model == 'bge':
+            self.mask_token = '[MASK]' 
+            model_path = self.config.roberta_path
+            tokenizer_from_pretrained = AutoTokenizer.from_pretrained
+        elif self.config.model == 'nvembed':
+            self.mask_token = '<mask>' 
+            model_path = self.config.roberta_path
+            tokenizer_from_pretrained = AutoTokenizer.from_pretrained
 
         # tokenizer
         if config.pattern == 'marker':
@@ -121,6 +129,11 @@ class data_sampler_CFRL(object):
             tp1 = '_process_BERT_'
         elif self.config.model == 'roberta':
             tp1 = '_process_Roberta_'
+        elif self.config.model == 'bge':
+            tp1 = '_process_BGE_'
+        elif self.config.model == 'nvembed':
+            tp1 = '_process_NV_Embebed_'
+            
         if self.config.task_name == 'FewRel':
             tp2 = 'CFRLFewRel/CFRLdata_10_100_10_'
         else:

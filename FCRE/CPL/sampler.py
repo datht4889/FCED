@@ -135,6 +135,11 @@ class data_sampler_CFRL(object):
             tp1 = '_process_BERT_'
         elif self.config.model == 'roberta':
             tp1 = '_process_Roberta_'
+        elif self.config.model == 'bge':
+            tp1 = '_process_BGE_'
+        elif self.config.model == 'nvembed':
+            tp1 = '_process_NV_Embebed_'
+
         if self.config.task_name == 'FewRel':
             tp2 = 'CFRLFewRel/CFRLdata_10_100_10_'
         else:
