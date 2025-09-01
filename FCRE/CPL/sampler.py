@@ -21,24 +21,24 @@ class data_sampler_CFRL(object):
             tokenizer_from_pretrained = RobertaTokenizer.from_pretrained
         elif self.config.model == 'bge':
             self.mask_token = '[MASK]' 
-            model_path = self.config.roberta_path
+            model_path = self.config.bge_path
             tokenizer_from_pretrained = AutoTokenizer.from_pretrained
         elif self.config.model == 'nvembed':
-            self.mask_token = '<mask>' 
-            model_path = self.config.roberta_path
+            self.mask_token = '[MASK]' 
+            model_path = self.config.nvembed_path
             tokenizer_from_pretrained = AutoTokenizer.from_pretrained
 
         # tokenizer
         if config.pattern == 'marker':
             self.tokenizer = tokenizer_from_pretrained(model_path, \
-            additional_special_tokens=self.unused_tokens)
+                additional_special_tokens=self.unused_tokens)
             self.config.h_ids = self.tokenizer.get_vocab()[self.unused_tokens[0]]
             self.config.t_ids = self.tokenizer.get_vocab()[self.unused_tokens[2]]
         elif config.pattern == 'hardprompt' or config.pattern == 'cls':
             self.tokenizer = tokenizer_from_pretrained(model_path)
         elif config.pattern == 'softprompt' or config.pattern == 'hybridprompt':
             self.tokenizer =tokenizer_from_pretrained(model_path, \
-            additional_special_tokens=[self.unused_token])
+                additional_special_tokens=[self.unused_token])
             self.config.prompt_token_ids = self.tokenizer.get_vocab()[self.unused_token]
 
         self.config.vocab_size = len(self.tokenizer)
