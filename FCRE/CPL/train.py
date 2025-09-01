@@ -556,6 +556,8 @@ if __name__ == '__main__':
     parser.add_argument("--mixup", action = 'store_true')
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
     parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
+    # training
+    parser.add_argument("--batch-size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int) # 8, 10
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     # SAM
@@ -588,10 +590,12 @@ if __name__ == '__main__':
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
-    config.epoch = args.epoch
-    config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
+
+    config.batch_size = args.batch_size
+    config.epoch = args.epoch
+    config.epoch_mem = args.epoch_mem
 
     config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
