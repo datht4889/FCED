@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from data_loader import get_data_loader_BERT
 from nltk import word_tokenize
 from retry import retry
+import json
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -264,15 +265,14 @@ def prompt_input(rname, rdesc, sample=None, n=10):
 def gen_data(r2desc, rel2id, sample, n=10, t=0, current_round=None):
     rname = sample['relation']
     rdesc = r2desc[rname]
-    # print('####', rname ,'####')
+    print('####', rname ,'####')
     input = prompt_input(rname, rdesc, sample=sample, n=n)
-    # print(input)
-    # output = gpt(input=input, t=t)
-    import json
-    with open('data/CFRLTacred/syn_data.json', 'r') as f:
-        syn_data = json.load(f)
-    output = syn_data['Round '+str(current_round)][rname]
-    # print(output)
+    print(input)
+    output = gpt(input=input, t=t)
+    # with open('data/CFRLTacred/syn_data.json', 'r') as f:
+    #     syn_data = json.load(f)
+    # output = syn_data['Round '+str(current_round)][rname]
+    print(output)
     try:
         parse_output = parse(rel2id, output)
     except Exception as e:
