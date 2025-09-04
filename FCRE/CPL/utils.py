@@ -268,7 +268,7 @@ def gen_data(dataset, r2desc, rel2id, sample, n=10, t=0, current_round=None):
     print('####', rname ,'####')
     input = prompt_input(rname, rdesc, sample=sample, n=n)
     # print(input)
-    output = gpt(input=input, t=t)
+    # output = gpt(input=input, t=t)
     with open(f'data/CFRL{dataset}/syn_data.json', 'r') as f:
         syn_data = json.load(f)
     output = syn_data['Round '+str(current_round)][rname]
