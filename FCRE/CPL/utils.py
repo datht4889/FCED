@@ -262,17 +262,17 @@ def prompt_input(rname, rdesc, sample=None, n=10):
     return pre_input + input
 
 
-def gen_data(r2desc, rel2id, sample, n=10, t=0, current_round=None):
+def gen_data(dataset, r2desc, rel2id, sample, n=10, t=0, current_round=None):
     rname = sample['relation']
     rdesc = r2desc[rname]
     print('####', rname ,'####')
     input = prompt_input(rname, rdesc, sample=sample, n=n)
-    print(input)
+    # print(input)
     output = gpt(input=input, t=t)
-    # with open('data/CFRLTacred/syn_data.json', 'r') as f:
-    #     syn_data = json.load(f)
-    # output = syn_data['Round '+str(current_round)][rname]
-    print(output)
+    with open(f'data/CFRL{dataset}/syn_data.json', 'r') as f:
+        syn_data = json.load(f)
+    output = syn_data['Round '+str(current_round)][rname]
+    # print(output)
     try:
         parse_output = parse(rel2id, output)
     except Exception as e:
@@ -281,6 +281,5 @@ def gen_data(r2desc, rel2id, sample, n=10, t=0, current_round=None):
         print("Round "+str(current_round)+" failed")
         print("Relation: ", rname)
         print(e)
-
 
     return parse_output
