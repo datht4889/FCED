@@ -202,7 +202,8 @@ class Manager(object):
                     optimizer.zero_grad()
                     loss.backward()
                     if self.distill_loss_list != [] and self.config.dynamic_rho:
-                        distillation_rho = sum(self.distill_loss_list)/len(self.distill_loss_list)*5
+                        mean_distill_loss = sum(self.distill_loss_list)/len(self.distill_loss_list)
+                        distillation_rho = max(0.05, min(mean_distill_loss * self.config.rho_weight, 0.12))
                         print("Setting rho to: ", distillation_rho)
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
                     else:
