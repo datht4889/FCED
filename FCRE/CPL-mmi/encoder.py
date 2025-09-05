@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from transformers import BertModel, BertConfig
-from transformers import RobertaModel
+from transformers import RobertaModel, AutoModel
 from transformers import BertForMaskedLM
 from transformers.models.llama.modeling_llama import *
 from transformers.models.mistral.modeling_mistral import *
@@ -16,9 +16,15 @@ class EncodingModel(nn.Module):
             self.bert_config.attn_implementation = 'eager'
             self.bert_config.deterministic_flash_attn = True
             self.encoder = BertModel.from_pretrained(config.bert_path, config=self.bert_config).to(config.device)
-            self.lm_head = BertForMaskedLM.from_pretrained(config.bert_path).to(config.device).cls
+            # self.lm_head = BertForMaskedLM.from_pretrained(config.bert_path).to(config.device).cls
         elif config.model == 'roberta':
             self.encoder = RobertaModel.from_pretrained(config.roberta_path).to(config.device)
+            self.encoder.resize_token_embeddings(config.vocab_size)
+        elif config.model == 'bge':
+            self.encoder = AutoModel.from_pretrained(config.bge_path).to(config.device)
+            self.encoder.resize_token_embeddings(config.vocab_size)
+        elif config.model == 'nvembed':
+            self.encoder = AutoModel.from_pretrained(config.nvembed_path, trust_remote_code=True).to(config.device)
             self.encoder.resize_token_embeddings(config.vocab_size)
         if config.tune == 'prompt':
             for param in self.encoder.parameters():

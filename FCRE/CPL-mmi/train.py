@@ -201,7 +201,7 @@ class Manager(object):
                 else:
                     optimizer.zero_grad()
                     loss.backward()
-                    if self.distill_loss_list != []:
+                    if self.distill_loss_list != [] and self.config.dynamic_rho:
                         distillation_rho = sum(self.distill_loss_list)/len(self.distill_loss_list)*5
                         print("Setting rho to: ", distillation_rho)
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
@@ -572,62 +572,89 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task_name", default="Tacred", type=str) # 'FewRel' or 'Tacred'
-    parser.add_argument("--num_k", default=5, type=int)
-    parser.add_argument("--num_gen", default=5, type=int)
+    # model and data
+    parser.add_argument("--model", default="bert", type=str)
+    parser.add_argument("--output-size", default=768, type=int)
+    parser.add_argument("--max-length", default=256, type=int)
+    parser.add_argument("--use_llm", action = 'store_true', default=False)
+    parser.add_argument("--device", default="cuda:0", type=str)
+    parser.add_argument("--task_name", default="Tacred", type=str)
+    # mixup settings
+    parser.add_argument("--num_k", default=5, type=int) # 5
+    parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true')
-    parser.add_argument("--epoch", default=10, type=int)
-    parser.add_argument("--epoch_mem", default=5, type=int)
-    parser.add_argument("--mixup_loss_1", default=0.25, type=float)
-    parser.add_argument("--mixup_loss_2", default=0.25, type=float)
+    parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
+    parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
+    # training
+    parser.add_argument("--batch-size", default=16, type=int)
+    parser.add_argument("--epoch", default=8, type=int) # 8, 10
+    parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     # SAM
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
+    parser.add_argument("--SAM_type", default="current", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--dynamic-rho", action = 'store_true', default=False)
+    parser.add_argument("--rho_weight", default=6, type=float)
     parser.add_argument("--decay", default=0, type=float)
     # Distillation
     parser.add_argument("--distill", action='store_true', default=False)
     parser.add_argument("--distill_type", default="none", type=str)
     parser.add_argument("--distill_loss_weight", default=0.25, type=float)
     parser.add_argument("--distill_top_k", default=10, type=int)
-    
+
     args = parser.parse_args()
-    config = Config('config.ini')
+    if args.use_llm:
+        config = Config('config_llm.ini')
+    else:
+        config = Config('config.ini')
+    config.model = args.model
+    config.encoder_output_size = args.output_size
+    config.max_length = args.max_length
+
     config.task_name = args.task_name
+    config.device = args.device
+    config.use_llm = args.use_llm
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
-    config.epoch = args.epoch
-    config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
 
+    config.batch_size = args.batch_size
+    config.epoch = args.epoch
+    config.epoch_mem = args.epoch_mem
+
     config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
+    config.SAM_type = args.SAM_type
     config.rho = args.rho
+    config.dynamic_rho = args.dynamic_rho
+    config.rho_weight = args.rho_weight
     config.sam_optimizer = args.sam_optimizer
     config.decay = args.decay
 
     config.distill = args.distill
-    config.distill_type = args.distill_type        
+    config.distill_type = args.distill_type
     config.distill_loss_weight = args.distill_loss_weight
     config.distill_top_k = args.distill_top_k
-    
 
-    print("CPL MMI Start")
+    print("CPL Start")
+    print(f'model: {config.model}')
     print(f'task_name: {config.task_name}')
     print(f'mixup: {config.mixup}')
     print(f'base_optimizer: {config.base_optimizer}')
     print(f'SAM: {config.SAM}')
+    print(f'SAM_type: {config.SAM_type}')
     print(f'SAM Optimizer: {config.sam_optimizer}')
     print(f'decay: {config.decay}')
     print(f'Distillation: {config.distill}')
-    print(f'Distillation type: {config.distill_type}')  
+    print(f'Distillation type: {config.distill_type}')
     print(f'Distillation alpha: {config.distill_loss_weight}')
     print(f'Distillation top_k: {config.distill_top_k}')
 
-    # config
+    # config 
     print('#############params############')
     print(config.device)
     config.device = torch.device(config.device)

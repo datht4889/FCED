@@ -2,7 +2,7 @@ import pickle
 import os 
 import random
 import numpy as np
-from transformers import BertTokenizer, RobertaTokenizer
+from transformers import BertTokenizer, RobertaTokenizer, AutoTokenizer
 
 class data_sampler_CFRL(object):
     def __init__(self, config=None, seed=None):
