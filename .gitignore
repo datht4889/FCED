@@ -1,2 +1,3 @@
 .env
 FCRE/CPL/logs/
+**/__pycache__/
