@@ -15,7 +15,7 @@ from config import Config
 
 from sampler_bert_llm import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM, get_data_loader_BERT
-from utils_llm import Moment_LLM, gen_data
+# from utils_llm import Moment_LLM, gen_data
 from utils import Moment, gen_data
 from encoder_llm import EncodingModel_LLM2vec
 from encoder import EncodingModel
@@ -374,7 +374,7 @@ class Manager(object):
                 for rel in current_relations:
                     for sample in memory_samples[rel]:
                         sample_text = self._get_sample_text(self.config.training_data, sample['index'])
-                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.key)
+                        gen_samples = gen_data(self.config.task_name, self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.key)
                         gen_text += gen_samples
                 for sample in gen_text:
                     data_generation.append(sampler.tokenize(sample))
