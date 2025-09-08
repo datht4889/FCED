@@ -16,10 +16,13 @@ class SAM(torch.optim.Optimizer):
         self.defaults.update(self.base_optimizer.defaults)
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
+    def first_step(self, zero_grad=False, rho=None):
         grad_norm = self._grad_norm()
         for group in self.param_groups:
-            scale = group["rho"] / (grad_norm + 1e-12)
+            if rho is not None:
+                scale = rho / (grad_norm + 1e-12)
+            else:
+                scale = group["rho"] / (grad_norm + 1e-12)
 
             for p in group["params"]:
                 if p.grad is None: continue
@@ -80,7 +83,7 @@ class FriendlySAM(torch.optim.Optimizer):
         self.lmbda = lmbda
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
+    def first_step(self, zero_grad=False, rho=None):
 
         for group in self.param_groups:
             for p in group["params"]:      
@@ -94,7 +97,10 @@ class FriendlySAM(torch.optim.Optimizer):
             
         grad_norm = self._grad_norm()
         for group in self.param_groups:
-            scale = group["rho"] / (grad_norm + 1e-12)
+            if rho is not None:
+                scale = rho / (grad_norm + 1e-12)
+            else:
+                scale = group["rho"] / (grad_norm + 1e-12)
 
             for p in group["params"]:
                 if p.grad is None: continue
@@ -239,10 +245,13 @@ class GCSAM(torch.optim.Optimizer):
         self.param_groups = self.base_optimizer.param_groups
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
+    def first_step(self, zero_grad=False, rho=None):
         grad_norm = self._grad_norm()
         for group in self.param_groups:
-            scale = group["rho"] / (grad_norm + 1e-12)
+            if rho is not None:
+                scale = rho / (grad_norm + 1e-12)
+            else:
+                scale = group["rho"] / (grad_norm + 1e-12)
 
             for p in group["params"]:
                 if p.grad is None: continue
@@ -304,11 +313,14 @@ class ESAM(torch.optim.Optimizer):
         self.paras = None
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
+    def first_step(self, zero_grad=False, rho=None):
         #first order sum 
         grad_norm = self._grad_norm()
         for group in self.param_groups:
-            scale = group["rho"] / (grad_norm + 1e-7) / self.beta
+            if rho is not None:
+                scale = rho / (grad_norm + 1e-7) / self.beta
+            else:
+                scale = group["rho"] / (grad_norm + 1e-7) / self.beta
             for p in group["params"]:
                 p.requires_grad = True 
                 if p.grad is None: continue
@@ -495,7 +507,7 @@ class LookbehindASAM(torch.optim.Optimizer):
                 del param_state['backup_params']
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
+    def first_step(self, zero_grad=False, rho=None):
         wgrads = []
         for group in self.param_groups:
             # for n, p in group["params"]:
@@ -523,7 +535,10 @@ class LookbehindASAM(torch.optim.Optimizer):
                 #     p.grad.mul_(t_w)
                 eps = t_w
                 eps[...] = p.grad[...]
-                eps.mul_(group["rho"] / wgrad_norm)
+                if rho is not None:
+                    eps.mul_(rho / wgrad_norm)
+                else:
+                    eps.mul_(group["rho"] / wgrad_norm)
                 p.add_(eps)
         
         if zero_grad:
@@ -645,7 +660,7 @@ class LookbehindSAM(torch.optim.Optimizer):
 
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
+    def first_step(self, zero_grad=False, rho=None):
         grads = []
         for group in self.param_groups:
             for p in group["params"]:
@@ -663,7 +678,10 @@ class LookbehindSAM(torch.optim.Optimizer):
                     eps = torch.clone(p).detach()
                     self.state[p]["eps"] = eps
                 eps[...] = p.grad[...]
-                eps.mul_(self.rho / grad_norm)
+                if rho is not None:
+                    eps.mul_(rho / grad_norm)
+                else:
+                    eps.mul_(self.rho / grad_norm)
                 p.add_(eps)
         if zero_grad:
             self.zero_grad()
