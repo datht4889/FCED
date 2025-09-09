@@ -217,7 +217,7 @@ class Manager(object):
                 merged_labels = torch.cat((torch.tensor(label_first), torch.tensor(label_second)), dim=0)
                 
     
-                if merged_hidden.shape[1] != 4096: # hard code :)
+                if merged_hidden.shape[1] != 4096 and self.config.use_llm: # hard code :)
                     print('something wrong')
                     logger.info('something wrong')
                     continue
@@ -252,7 +252,7 @@ class Manager(object):
                     merged_labels = torch.cat((torch.tensor(label_first), torch.tensor(label_second)), dim=0)
                     
         
-                    if merged_hidden.shape[1] != 4096: # hard code :)
+                    if merged_hidden.shape[1] != 4096 and self.config.use_llm: # hard code :)
                         print('something wrong')
                         logger.info("something wrong")
                         continue
