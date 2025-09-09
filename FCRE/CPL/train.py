@@ -21,7 +21,7 @@ from encoder_llm import EncodingModel_LLM2vec
 from encoder import EncodingModel
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
 from transformers import BertTokenizer
-from mixup import mixup_data_augmentation_llm
+from mixup import mixup_data_augmentation_llm, mixup_data_augmentation
 from sam import SAM
 import logging
 
@@ -398,7 +398,10 @@ class Manager(object):
                 # augment data:
                 data_for_train = training_data_initialize + memory_data_initialize
                 if config.mixup:
-                    mixup_samples = mixup_data_augmentation_llm(data_for_train)
+                    if self.config.use_llm:
+                        mixup_samples = mixup_data_augmentation_llm(data_for_train)
+                    else:
+                        mixup_samples = mixup_data_augmentation(data_for_train)
                     print('Mixup data size: ', len(mixup_samples))
                     self.moment.init_moment_mixup(encoder, mixup_samples, is_memory=True) 
                     self.train_model_mixup(encoder, mixup_samples)
