@@ -402,10 +402,6 @@ class Manager(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # model and data
-    parser.add_argument("--model", default="bert", type=str)
-    parser.add_argument("--output-size", default=768, type=int)
-    parser.add_argument("--max-length", default=256, type=int)
-    parser.add_argument("--use_llm", action = 'store_true', default=False)
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--task_name", default="Tacred", type=str)
     # mixup settings
@@ -434,17 +430,10 @@ if __name__ == '__main__':
     parser.add_argument("--distill_top_k", default=10, type=int)
 
     args = parser.parse_args()
-    if args.use_llm:
-        config = Config('config_llm.ini')
-    else:
-        config = Config('config.ini')
-    config.model = args.model
-    config.encoder_output_size = args.output_size
-    config.max_length = args.max_length
+    config = Config('config_llm.ini')
 
     config.task_name = args.task_name
     config.device = args.device
-    config.use_llm = args.use_llm
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
