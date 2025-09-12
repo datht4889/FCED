@@ -487,7 +487,8 @@ class EncodingModel_LLM2vec(nn.Module):
         
         # Get model outputs with attention scores
         outputs = self.encoder.model(
-            **input_data, 
+            input_ids=input_data['input_ids'],
+            attention_mask=input_data['attention_mask'],
             output_attentions=True if is_distill else None
         )
         
