@@ -425,6 +425,7 @@ class EncodingModel_LLM2vec(nn.Module):
             pooling_mode="mean",
             max_length=512,
             skip_instruction = False,
+            token="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"
         )
         # merge LoRA of encoder
 
@@ -479,13 +480,63 @@ class EncodingModel_LLM2vec(nn.Module):
         model.print_trainable_parameters()
         return model
 
-    def forward(self, inputs): # (b, max_length)
+    def forward(self, inputs, is_augment=False, is_distill=False, top_k=10): # (b, max_length)
         batch_size = len(inputs)
         input_data = self.encoder.tokenize(inputs)
         input_data = {k: v.cuda() for k, v in input_data.items()}
-        embeddings = self.encoder.forward(input_data)
-        # embeddings = self.vector_linear(embeddings)
+        
+        # Get model outputs with attention scores
+        outputs = self.encoder.model(
+            **input_data, 
+            output_attentions=True if is_distill else None
+        )
+        
+        # Get last hidden states
+        last_hidden_state = outputs.last_hidden_state
+        
+        # Apply mean pooling like original LLM2Vec implementation
+        attention_mask = input_data['attention_mask']
+        embeddings = (last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
+        
+        if is_distill:
+            # Get the last layer attention scores (similar to EncodingModel)
+            attention_scores = outputs.attentions
+            attentions_layer = attention_scores[-1]  # choose last layer
+            
+            # Column-wise sum over queries (dim=2). Result: (B, H, S)
+            col_sum_per_head = attentions_layer.sum(dim=2)
+            
+            # Aggregate across heads -> (B, S)
+            token_scores = col_sum_per_head.mean(dim=1)  # (B, S)
+            
+            # Mask out padding tokens
+            mask = attention_mask.to(token_scores.dtype)
+            token_scores = token_scores * mask
+            
+            # Normalize to probabilities per example
+            token_probs = token_scores / (token_scores.sum(dim=1, keepdim=True) + 1e-12)
+            
+            # Choose safe k (don't request more than seq length)
+            S = token_probs.size(1)
+            k = top_k if S > top_k else S
+            
+            # top-k indices and scores per example
+            topk_scores, topk_indices = torch.topk(token_probs, k=k, dim=1)
+            
+            # Prepare indices for gathering hidden states
+            B, _, H = last_hidden_state.size()
+            topk_hidden_indices = topk_indices.unsqueeze(-1).expand(-1, -1, H)  # (B, k, H)
+            
+            return embeddings, last_hidden_state, topk_hidden_indices
+        
+        # For augmentation mode, you could implement similar to forward_mixup
+        if is_augment:
+            # This part depends on how you want to handle augmentation
+            # You might need to adapt your forward_mixup logic here
+            raise NotImplementedError("Augmentation mode not implemented yet")
+        
         return embeddings
+
     def forward_mixup(self, inputs):
         """
         inputs: batch of [input1, input2]

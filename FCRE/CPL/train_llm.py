@@ -12,7 +12,7 @@ from config import Config
 
 from sampler_bert_llm import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM
-from utils_llm import Moment, gen_data
+from utils_llm import Moment_LLM, gen_data
 from encoder_llm import EncodingModel_LLM2vec
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
 from transformers import BertTokenizer
@@ -109,7 +109,8 @@ class Manager(object):
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
-                hidden = encoder(instance['input'])
+                breakpoint()
+                hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)    
                 if not self.config.SAM:
                     optimizer.zero_grad()
@@ -315,7 +316,7 @@ class Manager(object):
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
             
             # Initialization
-            self.moment = Moment(self.config)
+            self.moment = Moment_LLM(self.config)
 
             # Train current task
             training_data_initialize = []
@@ -400,7 +401,8 @@ class Manager(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task_name", default="FewRel", type=str)
+    parser.add_argument("--task_name", default="Tacred", type=str)
+    parser.add_argument("--device", default="cuda", type=str)
     parser.add_argument("--num_k", default=5, type=int)
     parser.add_argument("--num_gen", default=2, type=int)
     parser.add_argument("--mixup", action = 'store_true', default=False)
@@ -415,6 +417,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = Config('config_llm.ini')
     config.task_name = args.task_name
+    config.device = args.device
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
