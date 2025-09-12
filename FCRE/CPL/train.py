@@ -16,7 +16,7 @@ import os
 from config import Config
 from sampler import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM, get_data_loader_BERT
-# from utils_llm import Moment_LLM, gen_data
+from utils_llm import Moment_LLM
 from utils import Moment, gen_data
 from encoder_llm import EncodingModel_LLM2vec
 from encoder import EncodingModel

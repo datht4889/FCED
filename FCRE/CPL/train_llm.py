@@ -14,10 +14,10 @@ from sampler_bert_llm import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM
 from utils_llm import Moment_LLM, gen_data
 from encoder_llm import EncodingModel_LLM2vec
-from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
+from add_loss import *
 from transformers import BertTokenizer
 from mixup import mixup_data_augmentation_llm
-from sam import SAM
+from sam import *
 import logging
 
 
@@ -98,20 +98,59 @@ class Manager(object):
         return mem_set, mem_feas
         # return mem_set, features, rel_proto
         
-    def train_model(self, encoder, training_data, is_memory=False):
+    def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None, seen_relid=None):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
+        if self.config.base_optimizer == 'Adam':
+            optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
+        elif self.config.base_optimizer == 'AdamW':
+            optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            base_optimizer = optim.Adam
-            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+            # base_optimizer = optim.Adam
+            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+            if self.config.base_optimizer == 'Adam':
+                base_optimizer = optim.Adam
+            elif self.config.base_optimizer == 'AdamW':
+                base_optimizer = optim.AdamW
+            if self.config.sam_optimizer=='SAM':
+                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ASAM':
+                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ESAM':
+                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='GCSAM':
+                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='FriendlySAM':
+                optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindASAM':
+                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindSAM':
+                optimizer = LookbehindSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
+        if is_memory and self.config.distill and self.config.distill_type != 'none':
+            self.distill_loss_list = []
+            if self.config.distill_type == 'RKD':
+                distill_loss_fn = RKD(device=self.config.device)
+            elif self.config.distill_type == 'KLDivAndAngleLoss':
+                distill_loss_fn = KLDivAndAngleLoss(device=self.config.device)
+
+
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
-                breakpoint()
                 hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
-                loss = self.moment.contrastive_loss(hidden, labels, is_memory)    
+                loss = self.moment.contrastive_loss(hidden, labels, is_memory)
+                if is_memory and self.config.distill and self.config.distill_type != 'none':
+                    old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
+                    topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
+                    if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
+                        distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
+                        loss = loss + distill_loss * self.config.distill_loss_weight
+                        self.distill_loss_list.append(distill_loss.item())
+                    else:
+                        raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))    
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
@@ -120,9 +159,28 @@ class Manager(object):
                 else:
                     optimizer.zero_grad()
                     loss.backward()
-                    optimizer.first_step(zero_grad=True)
-                    hidden = encoder(instance['input'])
+                    if self.distill_loss_list != [] and self.config.dynamic_rho:
+                        mean_distill_loss = sum(self.distill_loss_list)/len(self.distill_loss_list)
+                        distillation_rho = max(0.05, min(mean_distill_loss * self.config.rho_weight, 0.12))
+                        # print("Setting rho to: ", distillation_rho)
+                        optimizer.first_step(zero_grad=True, rho=distillation_rho)
+                    else:
+                        # print("Using config rho: ", self.config.rho)
+                        optimizer.first_step(zero_grad=True, rho=self.config.rho)
+
+                    hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k) 
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
+
+                    if is_memory and self.config.distill and self.config.distill_type != 'none':
+                        old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
+                        topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
+                        if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
+                            distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
+                            loss = loss + distill_loss * self.config.distill_loss_weight
+                        else:
+                            raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
+                        
                     loss.backward()
                     optimizer.second_step(zero_grad=True)
                     # update moment
@@ -142,10 +200,33 @@ class Manager(object):
         print('')           
     def train_model_mixup(self, encoder, training_data):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
-        optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
+        if self.config.base_optimizer == 'Adam':
+            optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
+        elif self.config.base_optimizer == 'AdamW':
+            optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+            
         if self.config.SAM:
-            base_optimizer = optim.Adam
-            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+            # base_optimizer = optim.Adam
+            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+
+            if self.config.base_optimizer == 'Adam':
+                base_optimizer = optim.Adam
+            elif self.config.base_optimizer == 'AdamW':
+                base_optimizer = optim.AdamW
+            if self.config.sam_optimizer=='SAM':
+                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ASAM':
+                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ESAM':
+                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='GCSAM':
+                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='FriendlySAM':
+                optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindASAM':
+                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindSAM':
+                optimizer = LookbehindSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
         encoder.train()
         epoch = 1
         
@@ -304,12 +385,15 @@ class Manager(object):
 
         # encoder
         encoder = EncodingModel_LLM2vec(self.config)
+        old_encoder = None
 
         # step is continual task number
         cur_acc, total_acc = [], []
         cur_acc_num, total_acc_num = [], []
         memory_samples = {}
         data_generation = []
+        seen_proto = []
+        self.distill_loss_list = []
         
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
         for step, (training_data, valid_data, test_data, current_relations, \
@@ -327,7 +411,7 @@ class Manager(object):
             if self.config.SAM_type == 'full' :
                 self.config.SAM = True
             self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
-            self.train_model(encoder, training_data_initialize)
+            self.train_model(encoder, old_encoder, training_data_initialize)
             if self.config.SAM_type == 'current':
                 self.config.SAM = False
 
@@ -348,6 +432,7 @@ class Manager(object):
                     
             # Train memory
             if step > 0:
+                old_encoder = encoder.get_old_model()
                 memory_data_initialize = []
                 for rel in seen_relations:
                     memory_data_initialize += memory_samples[rel]
@@ -360,8 +445,10 @@ class Manager(object):
                     self.moment.init_moment_mixup(encoder, mixup_samples, is_memory=True) 
                     self.train_model_mixup(encoder, mixup_samples)
                 self.moment.init_moment(encoder, memory_data_initialize, is_memory=True)
-                self.train_model(encoder, memory_data_initialize, is_memory=True)
-                
+                self.train_model(encoder, old_encoder, memory_data_initialize, is_memory=True, seen_proto=seen_proto, seen_relid=seen_relid)
+            
+            # Save the current model state for future tasks
+            encoder.set_history()
 
             # Update proto
             seen_proto = []  
@@ -381,9 +468,6 @@ class Manager(object):
                 test_data_initialize_cur += test_data[rel]
             for rel in seen_relations:
                 test_data_initialize_seen += historic_test_data[rel]
-            seen_relid = []
-            for rel in seen_relations:
-                seen_relid.append(self.rel2id[rel])
             ac1 = self.eval_encoder_proto(encoder, seen_proto, seen_relid, test_data_initialize_cur)
             ac2 = self.eval_encoder_proto(encoder, seen_proto, seen_relid, test_data_initialize_seen)
             cur_acc_num.append(ac1)
