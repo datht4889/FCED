@@ -497,7 +497,7 @@ class EncodingModel_LLM2vec(nn.Module):
         mask_positions = input_data["input_ids"] == self.tokenizer.mask_token_id
         mask_embeddings = last_hidden_state[mask_positions]
         
-        assert mask_embeddings.shape[0] == batch_size, f"{mask_embeddings.shape[0]} != {batch_size}, {inputs[0]}"
+        assert mask_embeddings.shape[0] == batch_size, f"{mask_embeddings.shape[0]} != {batch_size}, {mask_embeddings.shape}, {last_hidden_state.shape}"
         
         # Apply mean pooling like original LLM2Vec implementation
         attention_mask = input_data['attention_mask']
