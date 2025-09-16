@@ -10,3 +10,4 @@ together
 dotenv
 peft
 llm2vec
+nltk

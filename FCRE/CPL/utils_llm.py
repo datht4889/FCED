@@ -123,7 +123,7 @@ class Moment_LLM:
         '''
         if is_memory:
             ct_x = self.mem_features.to(self.config.device)
-            ct_y = self.mem_labels
+            ct_y = self.mem_labels.to(self.config.device)
         else:
             idx = list(range(len(self.features)))
             if len(idx) > self.sample_k:
@@ -134,8 +134,8 @@ class Moment_LLM:
             ct_y = self.labels[sample_id] # (N)
 
         # l2 normalize
-        x = F.normalize(x, p=2, dim=1)
-        ct_x = F.normalize(ct_x, p=2, dim=1)
+        x = F.normalize(x, p=2, dim=1).to(self.config.device)
+        ct_x = F.normalize(ct_x, p=2, dim=1).to(self.config.device)
         
         t1 = torch.mm(x, ct_x.T) + 1 # 0 <= cos + 1 <= 2
         zeros = (torch.zeros_like(t1)).to(self.config.device)
