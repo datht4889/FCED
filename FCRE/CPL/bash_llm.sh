@@ -1,6 +1,6 @@
 for t in FewRel Tacred
 do
-    CUDA_VISIBLE_DEVICES=0 python train_llm.py --task_name $t \
+    CUDA_VISIBLE_DEVICES=1 python train_llm.py --task_name $t \
         --num_k 5 \
         --num_gen 5 \
         --base_optimizer AdamW \
@@ -15,5 +15,5 @@ do
         --distill_loss_weight 0 \
         --distill_top_k 10 \
         --batch-size 16  \
-        --device cpu
+        --device cuda
 done

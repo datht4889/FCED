@@ -494,10 +494,13 @@ class EncodingModel_LLM2vec(nn.Module):
         
         # Get last hidden states
         last_hidden_state = outputs.last_hidden_state
+        mask_positions = input_data["input_ids"] == self.tokenizer.mask_token_id
+        mask_embeddings = last_hidden_state[mask_positions]
+        
+        assert mask_embeddings.shape[0] == batch_size, f"{mask_embeddings.shape[0]} != {batch_size}, {inputs[0]}"
         
         # Apply mean pooling like original LLM2Vec implementation
         attention_mask = input_data['attention_mask']
-        embeddings = (last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
         
         if is_distill:
             # Get the last layer attention scores (similar to EncodingModel)
@@ -528,7 +531,7 @@ class EncodingModel_LLM2vec(nn.Module):
             B, _, H = last_hidden_state.size()
             topk_hidden_indices = topk_indices.unsqueeze(-1).expand(-1, -1, H)  # (B, k, H)
             
-            return embeddings, last_hidden_state, topk_hidden_indices
+            return mask_embeddings, last_hidden_state, topk_hidden_indices
         
         # For augmentation mode, you could implement similar to forward_mixup
         if is_augment:
@@ -536,7 +539,7 @@ class EncodingModel_LLM2vec(nn.Module):
             # You might need to adapt your forward_mixup logic here
             raise NotImplementedError("Augmentation mode not implemented yet")
         
-        return embeddings
+        return mask_embeddings
 
     def forward_mixup(self, inputs):
         """
