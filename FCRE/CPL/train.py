@@ -679,7 +679,7 @@ if __name__ == '__main__':
     if args.mixup: pre += "mixup|"
     if args.SAM: pre += "SAM"
 
-    file_handler = logging.FileHandler(f'CPL-{pre}-logs-task_{config.task_name}-SAM_type_{config.SAM_type}-SAM_optimizer_{config.sam_optimizer}-rho_{config.rho}.log')
+    file_handler = logging.FileHandler(f'CPL-{pre}-logs-task_{config.task_name}-model{config.model}-SAM_type_{config.SAM_type}-SAM_optimizer_{config.sam_optimizer}-rho_{config.rho}.log')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
