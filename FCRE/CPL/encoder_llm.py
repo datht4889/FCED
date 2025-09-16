@@ -493,9 +493,9 @@ class EncodingModel_LLM2vec(nn.Module):
         )
         
         # Get last hidden states
-        last_hidden_state = outputs.last_hidden_state
+        last_hidden_state = outputs.last_hidden_state.squeeze(0)
         mask_positions = input_data["input_ids"] == self.tokenizer.mask_token_id
-        mask_embeddings = last_hidden_state[mask_positions][0]
+        mask_embeddings = last_hidden_state[mask_positions]
         
         assert mask_embeddings.shape[0] == batch_size, f"{mask_embeddings.shape[0]} != {batch_size}, {mask_embeddings.shape}, {last_hidden_state.shape}"
         
