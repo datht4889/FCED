@@ -491,8 +491,6 @@ class EncodingModel_LLM2vec(nn.Module):
             attention_mask=input_data['attention_mask'],
             output_attentions=True if is_distill else None
         )
-
-        breakpoint()
         
         # Get last hidden states
         last_hidden_state = outputs.last_hidden_state
