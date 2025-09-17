@@ -136,6 +136,8 @@ class Moment_LLM:
         # l2 normalize
         x = F.normalize(x, p=2, dim=1).to(self.config.device)
         ct_x = F.normalize(ct_x, p=2, dim=1).to(self.config.device)
+
+        print(f"Debug shapes - x: {x.shape}, ct_x: {ct_x.shape}, labels: {labels.shape}, ct_y: {ct_y.shape}")
         
         t1 = torch.mm(x, ct_x.T) + 1 # 0 <= cos + 1 <= 2
         zeros = (torch.zeros_like(t1)).to(self.config.device)
@@ -143,6 +145,8 @@ class Moment_LLM:
         neg = 1 - self.m + 0.5 * t1
         dot_product_tempered_pos = torch.where(pos > 0, pos * t1 / self.temperature, zeros)
         dot_product_tempered_neg = torch.where(neg > 0, neg * t1 / self.temperature, zeros)
+
+        print(f"dot_product shapes - pos: {dot_product_tempered_pos.shape}, neg: {dot_product_tempered_neg.shape}")
         
         exp_dot_tempered_pos = (
             torch.exp(dot_product_tempered_pos - \
@@ -152,14 +156,19 @@ class Moment_LLM:
             torch.exp(dot_product_tempered_neg - \
                 torch.max(dot_product_tempered_neg, dim=1, keepdim=True)[0].detach()) + 1e-5
         ) 
+
+        print(f"exp_dot shapes - pos: {exp_dot_tempered_pos.shape}, neg: {exp_dot_tempered_neg.shape}")
+
         # mask_combined_pos = (labels.unsqueeze(1).repeat(1, ct_y.shape[0]) == ct_y).to(self.config.device)
-        try: 
-            mask_combined_pos = (labels.unsqueeze(1) == ct_y.unsqueeze(0)).to(self.config.device)
-        except Exception as e:
-            print(labels.shape)
-            print(ct_y.shape)
-            raise e
+        mask_combined_pos = (labels.unsqueeze(1) == ct_y.unsqueeze(0)).to(self.config.device)
         mask_combined_neg = ~mask_combined_pos
+
+        print(f"mask shapes - pos: {mask_combined_pos.shape}, neg: {mask_combined_neg.shape}")
+        
+        # Ensure all tensors have the same shape before element-wise operations
+        assert exp_dot_tempered_pos.shape == mask_combined_pos.shape, f"Shape mismatch: exp_pos {exp_dot_tempered_pos.shape} vs mask_pos {mask_combined_pos.shape}"
+        assert exp_dot_tempered_neg.shape == mask_combined_neg.shape, f"Shape mismatch: exp_neg {exp_dot_tempered_neg.shape} vs mask_neg {mask_combined_neg.shape}"
+
         cardinality_per_samples = torch.sum(mask_combined_pos, dim=1)
 
         sum_temp = torch.sum(exp_dot_tempered_pos * mask_combined_pos, dim=1, keepdim=True) \
