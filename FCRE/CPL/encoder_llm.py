@@ -501,7 +501,7 @@ class EncodingModel_LLM2vec(nn.Module):
         summed_embeddings = masked_embeddings.sum(dim=1)
         seq_lengths = attention_mask.sum(dim=1, keepdim=True).float()
         embeddings = summed_embeddings / seq_lengths  # Shape: [batch_size, hidden_size]
-        
+        print("DEBUG - embeddings shape: ", embeddings.shape)
         assert embeddings.shape[0] == batch_size, f"{embeddings.shape[0]} != {batch_size}, {embeddings.shape}, {last_hidden_state.shape}"
         
         # Apply mean pooling like original LLM2Vec implementation
