@@ -29,7 +29,7 @@ class Moment_LLM:
         encoder.eval()
         datalen = len(dataset)
         if not is_memory:
-            self.features = torch.zeros(datalen, self.config.encoder_output_size, dtype=torch.bfloat16)
+            self.features = torch.zeros(datalen, self.config.encoder_output_size)
             data_loader = get_data_loader_BERTLLM(self.config, dataset) # shuffle=False
             lbs = []
             for step, (instance, labels, ind) in enumerate(data_loader):
