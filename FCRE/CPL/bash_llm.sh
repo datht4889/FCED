@@ -14,6 +14,6 @@ do
         --distill_type RKD \
         --distill_loss_weight 0 \
         --distill_top_k 10 \
-        --batch-size 2  \
+        --batch-size 16  \
         --device cuda
 done
