@@ -42,8 +42,24 @@ class data_sampler_CFRL(object):
             self.config.prompt_token_ids = self.tokenizer.get_vocab()[self.unused_token]
 
         self.config.vocab_size = len(self.tokenizer)
-        self.config.sep_token_ids = self.tokenizer.get_vocab()[self.tokenizer.sep_token]
-        self.config.mask_token_ids = self.tokenizer.get_vocab()[self.tokenizer.mask_token]
+        
+        # Handle different tokenizer types and their special tokens
+        if hasattr(self.tokenizer, 'sep_token') and self.tokenizer.sep_token is not None:
+            self.config.sep_token_ids = self.tokenizer.get_vocab()[self.tokenizer.sep_token]
+        else:
+            # For BGE and other models that might not have sep_token, use eos_token or a fallback
+            if hasattr(self.tokenizer, 'eos_token') and self.tokenizer.eos_token is not None:
+                self.config.sep_token_ids = self.tokenizer.get_vocab()[self.tokenizer.eos_token]
+            else:
+                # Fallback to pad_token or a default value
+                self.config.sep_token_ids = self.tokenizer.get_vocab().get('[SEP]', self.tokenizer.pad_token_id)
+        
+        if hasattr(self.tokenizer, 'mask_token') and self.tokenizer.mask_token is not None:
+            self.config.mask_token_ids = self.tokenizer.get_vocab()[self.tokenizer.mask_token]
+        else:
+            # Fallback for models without mask_token
+            self.config.mask_token_ids = self.tokenizer.get_vocab().get('[MASK]', self.tokenizer.unk_token_id)
+            
         self.sep_token_ids, self.mask_token_ids =  self.config.sep_token_ids, self.config.mask_token_ids
 
         # read relations
