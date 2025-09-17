@@ -121,7 +121,6 @@ class Moment_LLM:
         '''
         x (B, H)
         '''
-        print(f"DEBUG: x.shape = {x.shape}, labels.shape = {labels.shape}")
         if is_memory:
             ct_x = self.mem_features.to(self.config.device)
             ct_y = self.mem_labels.to(self.config.device)
