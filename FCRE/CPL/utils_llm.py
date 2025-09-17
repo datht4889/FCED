@@ -136,8 +136,6 @@ class Moment_LLM:
         # l2 normalize
         x = F.normalize(x, p=2, dim=1).to(self.config.device)
         ct_x = F.normalize(ct_x, p=2, dim=1).to(self.config.device)
-
-        print(f"Debug shapes - x: {x.shape}, ct_x: {ct_x.shape}, labels: {labels.shape}, ct_y: {ct_y.shape}")
         
         t1 = torch.mm(x, ct_x.T) + 1 # 0 <= cos + 1 <= 2
         zeros = (torch.zeros_like(t1)).to(self.config.device)
