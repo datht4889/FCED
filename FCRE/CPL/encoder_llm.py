@@ -535,7 +535,7 @@ class EncodingModel_LLM2vec(nn.Module):
             # Prepare indices for gathering hidden states
             B, _, H = last_hidden_state.size()
             topk_hidden_indices = topk_indices.unsqueeze(-1).expand(-1, -1, H)  # (B, k, H)
-            
+            breakpoint()
             return embeddings, last_hidden_state, topk_hidden_indices
         
         # For augmentation mode, you could implement similar to forward_mixup
