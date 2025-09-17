@@ -481,7 +481,7 @@ class EncodingModel_LLM2vec(nn.Module):
         return model
 
     def forward(self, inputs, is_augment=False, is_distill=False, top_k=10): # (b, max_length)
-        batch_size = inputs['input'].size()[0]
+        batch_size = len(inputs['input'])
         input_data = self.encoder.tokenize(inputs['input'])
         input_data = {k: v.cuda() for k, v in input_data.items()}
         
