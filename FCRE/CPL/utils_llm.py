@@ -143,8 +143,6 @@ class Moment_LLM:
         neg = 1 - self.m + 0.5 * t1
         dot_product_tempered_pos = torch.where(pos > 0, pos * t1 / self.temperature, zeros)
         dot_product_tempered_neg = torch.where(neg > 0, neg * t1 / self.temperature, zeros)
-
-        print(f"dot_product shapes - pos: {dot_product_tempered_pos.shape}, neg: {dot_product_tempered_neg.shape}")
         
         exp_dot_tempered_pos = (
             torch.exp(dot_product_tempered_pos - \
@@ -155,14 +153,10 @@ class Moment_LLM:
                 torch.max(dot_product_tempered_neg, dim=1, keepdim=True)[0].detach()) + 1e-5
         ) 
 
-        print(f"exp_dot shapes - pos: {exp_dot_tempered_pos.shape}, neg: {exp_dot_tempered_neg.shape}")
-
         # mask_combined_pos = (labels.unsqueeze(1).repeat(1, ct_y.shape[0]) == ct_y).to(self.config.device)
         mask_combined_pos = (labels.unsqueeze(1) == ct_y.unsqueeze(0)).to(self.config.device)
         mask_combined_neg = ~mask_combined_pos
 
-        print(f"mask shapes - pos: {mask_combined_pos.shape}, neg: {mask_combined_neg.shape}")
-        
         # Ensure all tensors have the same shape before element-wise operations
         assert exp_dot_tempered_pos.shape == mask_combined_pos.shape, f"Shape mismatch: exp_pos {exp_dot_tempered_pos.shape} vs mask_pos {mask_combined_pos.shape}"
         assert exp_dot_tempered_neg.shape == mask_combined_neg.shape, f"Shape mismatch: exp_neg {exp_dot_tempered_neg.shape} vs mask_neg {mask_combined_neg.shape}"
