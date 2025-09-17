@@ -488,6 +488,7 @@ if __name__ == '__main__':
     # model and data
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--task_name", default="Tacred", type=str)
+    parser.add_argument("--model", default="llm", type=str)
     # mixup settings
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
