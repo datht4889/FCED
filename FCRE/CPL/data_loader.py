@@ -75,9 +75,13 @@ class BERTLLMDataset(Dataset):
         return (self.data[idx], idx)
 
     def collate_fn(self, data):
-        # print('-'*50)
-        # print(data)
-        # print('-'*50)
+        print('-'*50)
+        print("DEBUG: Number of items in batch:", len(data))
+        print("DEBUG: First item structure:", data[0])
+        print("DEBUG: First item[0] keys:", data[0][0].keys() if isinstance(data[0][0], dict) else "Not a dict")
+        print("DEBUG: First item[0] content:", data[0][0])
+        print('-'*50)
+        
         batch_instance = {'input': [],'ids': [], 'mask': []} 
         batch_label = []
         batch_idx = []
@@ -85,8 +89,14 @@ class BERTLLMDataset(Dataset):
         batch_label = torch.tensor([item[0]['relation'] for item in data])
         batch_instance['ids'] = torch.tensor([item[0]['ids'] for item in data])
         batch_instance['mask'] = torch.tensor(np.array([item[0]['mask'] for item in data]))
-        print(data.keys())
-        batch_instance['input'] = [item[0]['input'] for item in data]
+        
+        # Check if 'input' key exists before accessing it
+        if 'input' in data[0][0]:
+            batch_instance['input'] = [item[0]['input'] for item in data]
+        else:
+            print("WARNING: 'input' key not found in data. Available keys:", list(data[0][0].keys()))
+            # You might need to create the input from other fields or handle this differently
+            raise KeyError("'input' key not found in data items.")
 
         batch_idx = torch.tensor([item[1] for item in data])
         
