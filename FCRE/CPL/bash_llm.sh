@@ -1,4 +1,4 @@
-for t in FewRel Tacred
+for t in Tacred
 do
     CUDA_VISIBLE_DEVICES=1 python train_llm.py --task_name $t \
         --num_k 5 \
