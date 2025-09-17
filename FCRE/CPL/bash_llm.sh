@@ -1,6 +1,6 @@
 for t in FewRel Tacred
 do
-    CUDA_VISIBLE_DEVICES=1 python train_llm.py --task_name $t \
+    CUDA_VISIBLE_DEVICES=1 TOKENIZERS_PARALLELISM=False python train_llm.py --task_name $t \
         --num_k 5 \
         --num_gen 5 \
         --base_optimizer AdamW \
