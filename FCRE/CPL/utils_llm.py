@@ -150,9 +150,15 @@ class Moment_LLM:
         )
         exp_dot_tempered_neg = (
             torch.exp(dot_product_tempered_neg - \
-                torch.max(dot_product_tempered_pos, dim=1, keepdim=True)[0].detach()) + 1e-5
+                torch.max(dot_product_tempered_neg, dim=1, keepdim=True)[0].detach()) + 1e-5
         ) 
-        mask_combined_pos = (labels.unsqueeze(1).repeat(1, ct_y.shape[0]) == ct_y).to(self.config.device)
+        # mask_combined_pos = (labels.unsqueeze(1).repeat(1, ct_y.shape[0]) == ct_y).to(self.config.device)
+        try: 
+            mask_combined_pos = (labels.unsqueeze(1) == ct_y.unsqueeze(0)).to(self.config.device)
+        except Exception as e:
+            print(labels.shape)
+            print(ct_y.shape)
+            raise e
         mask_combined_neg = ~mask_combined_pos
         cardinality_per_samples = torch.sum(mask_combined_pos, dim=1)
 
