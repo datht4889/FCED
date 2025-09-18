@@ -34,9 +34,9 @@ class Moment_LLM:
             for step, (instance, labels, ind) in enumerate(data_loader):
                 # for k in ['ids', 'mask']:
                 #     instance[k] = instance[k].to(self.config.device)
-                print("-"*50)
-                print(instance)
-                print("-"*50)
+                # print("-"*50)
+                # print(instance)
+                # print("-"*50)
                 hidden = encoder(instance['input'])
                 fea = hidden.detach().cpu().data
                 self.update(ind, fea)
