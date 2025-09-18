@@ -17,7 +17,7 @@ from encoder_llm import EncodingModel_LLM2vec
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
 from transformers import BertTokenizer
 from mixup import mixup_data_augmentation_llm
-from sam import SAM
+from sam import *
 import logging
 
 
@@ -102,8 +102,27 @@ class Manager(object):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            base_optimizer = optim.Adam
-            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+            # base_optimizer = optim.Adam
+            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+
+            if self.config.base_optimizer == 'Adam':
+                base_optimizer = optim.Adam
+            elif self.config.base_optimizer == 'AdamW':
+                base_optimizer = optim.AdamW
+            if self.config.sam_optimizer=='SAM':
+                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ASAM':
+                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ESAM':
+                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='GCSAM':
+                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='FriendlySAM':
+                optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindASAM':
+                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindSAM':
+                optimizer = LookbehindSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
@@ -143,8 +162,27 @@ class Manager(object):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            base_optimizer = optim.Adam
-            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+            # base_optimizer = optim.Adam
+            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
+
+            if self.config.base_optimizer == 'Adam':
+                base_optimizer = optim.Adam
+            elif self.config.base_optimizer == 'AdamW':
+                base_optimizer = optim.AdamW
+            if self.config.sam_optimizer=='SAM':
+                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ASAM':
+                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='ESAM':
+                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='GCSAM':
+                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='FriendlySAM':
+                optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindASAM':
+                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            elif self.config.sam_optimizer=='LookbehindSAM':
+                optimizer = LookbehindSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
         encoder.train()
         epoch = 1
         
@@ -408,8 +446,10 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=6, type=int)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
+    parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--SAM_type", default="", type=str, help="current for SAM in current task or full for SAM in all data")
+    parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
     
     args = parser.parse_args()
@@ -422,8 +462,11 @@ if __name__ == '__main__':
     config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
+
+    config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
+    config.sam_optimizer = args.sam_optimizer
     config.rho = args.rho
 
     # config 
