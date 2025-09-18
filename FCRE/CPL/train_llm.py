@@ -364,7 +364,7 @@ class Manager(object):
             if self.config.SAM_type == 'full' :
                 self.config.SAM = True
             self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
-            self.train_model(encoder, training_data_initialize)
+            # self.train_model(encoder, training_data_initialize)
             if self.config.SAM_type == 'current':
                 self.config.SAM = False
 
