@@ -262,6 +262,7 @@ def prompt_input(rname, rdesc, sample=None, n=10):
 
 
 def gen_data(r2desc, rel2id, sample, n=10, t=0, current_round=None):
+    breakpoint()
     rname = sample['relation']
     rdesc = r2desc[rname]
     print('####', rname ,'####')
