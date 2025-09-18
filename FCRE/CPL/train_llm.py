@@ -442,6 +442,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_k", default=5, type=int)
     parser.add_argument("--num_gen", default=2, type=int)
     parser.add_argument("--mixup", action = 'store_true', default=False)
+    parser.add_argument("--batch_size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int)
     parser.add_argument("--epoch_mem", default=6, type=int)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
@@ -451,6 +452,8 @@ if __name__ == '__main__':
     parser.add_argument("--SAM_type", default="", type=str, help="current for SAM in current task or full for SAM in all data")
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--decay", default=0, type=float)
+
     
     args = parser.parse_args()
     config = Config('config_llm.ini')
@@ -458,6 +461,7 @@ if __name__ == '__main__':
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
+    config.batch_size = args.batch_size
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
@@ -468,6 +472,7 @@ if __name__ == '__main__':
     config.SAM_type = args.SAM_type
     config.sam_optimizer = args.sam_optimizer
     config.rho = args.rho
+    config.decay = args.decay
 
     # config 
     print('#############params############')
