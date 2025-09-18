@@ -442,7 +442,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_k", default=5, type=int)
     parser.add_argument("--num_gen", default=2, type=int)
     parser.add_argument("--mixup", action = 'store_true', default=False)
-    parser.add_argument("--batch_size", default=16, type=int)
+    parser.add_argument("--batch-size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int)
     parser.add_argument("--epoch_mem", default=6, type=int)
     parser.add_argument("--device", default="cuda", type=str)
