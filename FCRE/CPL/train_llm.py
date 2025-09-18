@@ -445,6 +445,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int)
     parser.add_argument("--epoch_mem", default=6, type=int)
+    parser.add_argument("--device", default="cuda", type=str)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
@@ -464,6 +465,7 @@ if __name__ == '__main__':
     config.batch_size = args.batch_size
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
+    config.device = args.device
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
 
