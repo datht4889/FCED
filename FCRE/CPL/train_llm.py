@@ -364,7 +364,7 @@ class Manager(object):
             if self.config.SAM_type == 'full' :
                 self.config.SAM = True
             self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
-            # self.train_model(encoder, training_data_initialize)
+            self.train_model(encoder, training_data_initialize)
             if self.config.SAM_type == 'current':
                 self.config.SAM = False
 
@@ -378,7 +378,7 @@ class Manager(object):
                 for rel in current_relations:
                     for sample in memory_samples[rel]:
                         sample_text = self._get_sample_text(self.config.training_data, sample['index'])
-                        gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.key)
+                        gen_samples = gen_data(self.config.task_name, self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.key)
                         gen_text += gen_samples
                 for sample in gen_text:
                     data_generation.append(sampler.tokenize(sample))
