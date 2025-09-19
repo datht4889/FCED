@@ -528,7 +528,7 @@ if __name__ == '__main__':
     if args.mixup: pre += "mixup|"
     if args.SAM: pre += "SAM"
 
-    file_handler = logging.FileHandler(f'CPL-LLM-{pre}-logs-task_{config.task_name}-shot_{config.num_k}-numgen_{config.num_gen}-epoch_{config.epoch}_{config.epoch_mem}-lossfactor_{config.mixup_loss_1}_{config.mixup_loss_2}-rho_{config.rho}-SAM_type_{config.SAM_type}-lr_{config.lr}.log')
+    file_handler = logging.FileHandler(f'CPL-LLM-{pre}-logs-task_{config.task_name}-SAM_type_{config.SAM_type}-SAM_optimizer_{config.sam_optimizer}-rho_{config.rho}.log')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
@@ -567,9 +567,9 @@ if __name__ == '__main__':
     accs = np.array(acc_list)
     ave = np.mean(accs, axis=0)
     print('----------END')
-    print('his_acc mean: ', np.around(ave, 4))
+    print('his_acc mean: ', np.around(ave, 4)*100)
     logger.info('----------END')
-    logger.info(f'his_acc mean: {np.around(ave, 4)}')
+    logger.info(f'his_acc mean: {np.around(ave, 4)*100}')
 
 
 
