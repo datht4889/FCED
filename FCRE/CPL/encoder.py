@@ -18,7 +18,7 @@ class EncodingModel(nn.Module):
             self.encoder = RobertaModel.from_pretrained(config.roberta_path).to(config.device)
             self.encoder.resize_token_embeddings(config.vocab_size)
         elif config.model == 'bge':
-            self.encoder = AutoModel.from_pretrained(config.bge_path).to(config.device)
+            self.encoder = AutoModel.from_pretrained(config.bge_path, torch_dtype=torch.bfloat16).to(config.device)
             self.encoder.resize_token_embeddings(config.vocab_size)
         elif config.model == 'nvembed':
             self.encoder = AutoModel.from_pretrained(config.nvembed_path, trust_remote_code=True).to(config.device)
