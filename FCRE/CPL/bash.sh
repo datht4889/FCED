@@ -1,7 +1,7 @@
 for t in FewRel Tacred
 do
-    CUDA_VISIBLE_DEVICES=0 python train.py --task_name $t \
-        --model bert \
+    CUDA_VISIBLE_DEVICES=1 TOKENIZER_PARALELISM=True python train.py --task_name $t \
+        --model bge \
         --output-size 768 \
         --max-length 256 \
         --num_k 5 \
