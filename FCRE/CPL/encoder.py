@@ -154,7 +154,7 @@ class EncodingModel(nn.Module):
             outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
             outputs_words = outputs[0]  # (b, max_length, h)
             attention_scores = outputs[2]
-            breakpoint()
+            print("DEBUG: outputs.shape", outputs.shape)
         else:
             outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
             outputs_words = outputs[0]  # (b, max_length, h)
