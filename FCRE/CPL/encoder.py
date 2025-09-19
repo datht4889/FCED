@@ -152,11 +152,12 @@ class EncodingModel(nn.Module):
         if pattern == 'softprompt' or pattern == 'hybridprompt':
             input_embedding = self.embedding_input(inputs['ids'])
             outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
+            print("DEBUG: outputs.shape", outputs)
             outputs_words = outputs[0]  # (b, max_length, h)
             attention_scores = outputs[2]
-            print("DEBUG: outputs.shape", outputs)
         else:
             outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
+            print("DEBUG: outputs.shape", outputs)
             outputs_words = outputs[0]  # (b, max_length, h)
             attention_scores = outputs[2]
             # outputs_words_des = self.encoder(inputs['ids_des'], attention_mask=inputs['mask_des'])[0] # (b, max_length, h)
