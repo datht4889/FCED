@@ -503,6 +503,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true')
     parser.add_argument("--batch-size", default=16, type=int)
+    parser.add_argument("--lr", default=1e-5, type=float)
     parser.add_argument("--device", default="cuda", type=str)
     parser.add_argument("--epoch", default=8, type=int) # 8, 10
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
@@ -528,6 +529,7 @@ if __name__ == '__main__':
     config.mixup = args.mixup
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
+    config.lr = args.lr
     config.batch_size = args.batch_size
     config.device = args.device
     config.mixup_loss_1 = args.mixup_loss_1

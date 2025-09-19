@@ -443,6 +443,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_k", default=5, type=int)
     parser.add_argument("--num_gen", default=2, type=int)
     parser.add_argument("--mixup", action = 'store_true', default=False)
+    parser.add_argument("--lr", default=1e-5, type=float)
     parser.add_argument("--batch-size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int)
     parser.add_argument("--epoch_mem", default=6, type=int)
@@ -464,6 +465,7 @@ if __name__ == '__main__':
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
+    config.lr = args.lr
     config.batch_size = args.batch_size
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
