@@ -18,6 +18,7 @@ from config import Config
 from sampler import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM, get_data_loader_BERT
 from utils import Moment, gen_data
+from utils_llm import Moment_LLM
 from encoder_llm import EncodingModel_LLM2vec
 from encoder import EncodingModel
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
@@ -500,6 +501,8 @@ if __name__ == '__main__':
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true')
+    parser.add_argument("--batch-size", default=16, type=int)
+    parser.add_argument("--device", default="cuda", type=str)
     parser.add_argument("--epoch", default=8, type=int) # 8, 10
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
@@ -523,6 +526,8 @@ if __name__ == '__main__':
     config.mixup = args.mixup
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
+    config.batch_size = args.batch_size
+    config.device = args.device
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
 
