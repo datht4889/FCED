@@ -439,6 +439,7 @@ class Manager(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--task_name", default="FewRel", type=str)
+    parser.add_argument("--total_round", default=5, type=int)
     parser.add_argument("--num_k", default=5, type=int)
     parser.add_argument("--num_gen", default=2, type=int)
     parser.add_argument("--mixup", action = 'store_true', default=False)
@@ -459,6 +460,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = Config('config_llm.ini')
     config.task_name = args.task_name
+    config.total_round = args.total_round
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
