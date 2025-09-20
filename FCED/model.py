@@ -2,11 +2,11 @@ import torch
 from transformers import BertModel
 import torch.nn as nn
 import torch.nn.functional as F
-from configs import Config
+from configs import parse_arguments
 from torch.nn.utils.rnn import unpad_sequence
 from random import shuffle
 
-args = Config()
+args = parse_arguments()
 device = torch.device(args.device if torch.cuda.is_available() and args.device != 'cpu' else "cpu")  # type: ignore
 
 

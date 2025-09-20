@@ -1,11 +1,11 @@
 from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset
-from configs import Config
+from configs import parse_arguments
 from utils.tools import collect_from_json
 
 import numpy as np
-args = Config()
+args = parse_arguments()
 
 
 

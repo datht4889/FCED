@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.nn.functional import normalize
 from torch.optim import AdamW
 from utils import *
-from configs import Config
+from configs import parse_arguments
 from model import BertED
 from tqdm import tqdm
 from exemplars import Exemplars
@@ -30,9 +30,6 @@ from sam import SAM
 def train(local_rank, args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-
-    print("PERM---SHOT NUM",int(os.environ.get('config.perm_id')), int(os.environ.get("config.shot_num")))
-
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter(
@@ -112,16 +109,7 @@ def train(local_rank, args):
         prev_learned_types = state_dict['prev_learned_types']
     if args.early_stop:
         e_pth = "./checkpoints/" + args.log_name + ".pth"
-
-
-    best_logger = open("./LOSS_LOG.txt", 'a')
-    # parameters = [param for param in model.input_map.parameters()]
-    parameters = [param for param in model.parameters()]
-        
     for stage in task_idx:
-
-        best_loss_ce, best_loss_aug, best_loss_fd, best_loss_pd = 1e9, 1e9, 1e9, 1e9
-
         # if stage > 0:
         #     break
         logger.info(f"Stage {stage}")
@@ -611,38 +599,9 @@ def train(local_rank, args):
             logger.info(f'loss_pd: {loss_pd}')
             logger.info(f'loss_all: {loss}')
 
-            #### ADD BEST LOGGER ####
-            if loss_ce < best_loss_ce:
-                best_loss_ce = loss_ce
-            if loss_ce < best_loss_aug:
-                best_loss_aug = loss_ce
-            if loss_ce < best_loss_fd:
-                best_loss_fd = loss_ce
-            if loss_ce < best_loss_pd:
-                best_loss_pd = loss_ce 
-            #########################
-
-
             if ((ep + 1) % args.eval_freq == 0 and args.early_stop) or (ep + 1) == args.epochs: # TODO TODO
-
-                #### BEST TRAINING LOSS ####
-                best_logger.writelines(f"Task_ID: {stage}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best CE: {best_loss_ce}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best AUG: {best_loss_aug}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best FD: {best_loss_fd}")
-                best_logger.write('\n') 
-                best_logger.writelines(f"Best PD: {best_loss_pd}")
-                best_logger.writelines("----------------------------------------------")
-                best_logger.write('\n') 
-                ###########################
-
                 # Evaluation process
                 logger.info("Evaluation process")
-                best_logger.writelines("Evaluation process")
-                best_logger.write('\n') 
                 model.eval()
                 with torch.no_grad():
                     if args.single_label:
@@ -685,8 +644,6 @@ def train(local_rank, args):
                         else:
                             no_better += 1
                             logger.info(f'No better: {no_better}/{args.patience}')
-                            best_logger.writelines(f'No better: {no_better}/{args.patience}')
-                            best_logger.write('\n')
                         # if no_better >= args.patience:
                         #     logger.info("Early stopping with dev_score: " + str(dev_score))
                         #     logger.info(f'marco F1 {micro_F1}')
@@ -703,16 +660,6 @@ def train(local_rank, args):
                         dev_scores_ls.append(dev_score if dev_score else micro_F1)
                         logger.info(f"Dev scores list: {dev_scores_ls}")
                         logger.info(f"bc:{bc}")
-
-                        best_logger.writelines("Early stopping with dev_score: " + str(dev_score))
-                        best_logger.write('\n')
-                        best_logger.writelines(f'marco F1 {micro_F1}')
-                        best_logger.write('\n')
-                        best_logger.writelines(f"Dev scores list: {dev_scores_ls}")
-                        best_logger.write('\n')
-                        best_logger.writelines(f"bc:{bc}")
-                        best_logger.write('\n')
-
                     
 
 
@@ -736,7 +683,7 @@ def train(local_rank, args):
 
 
 if __name__ == "__main__":
-    args = Config()
+    args = parse_arguments()
     if args.parallel == 'DDP':
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = "29500"

@@ -3,16 +3,15 @@ import numpy as np
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from configs import Config
+from configs import parse_arguments
 from transformers import AutoTokenizer
 from openai import OpenAI
 import json
-import os
-
-args = Config()
-client = OpenAI(api_key=os.environ.get("ai_key"))
 
 
+client = OpenAI(api_key="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")
+
+args = parse_arguments()
 tokenizer = AutoTokenizer.from_pretrained(args.backbone)
 
 LABEL2EVENT_TYPE = {

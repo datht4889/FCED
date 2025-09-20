@@ -1,8 +1,8 @@
 import json, os
 import torch
 import torch.nn as nn
-from configs import Config
-args = Config()
+from configs import parse_arguments
+args = parse_arguments()
 device = torch.device(args.device if torch.cuda.is_available() and args.device != 'cpu' else "cpu")  # type: ignore
 m = nn.Dropout(p=0.1)
 
