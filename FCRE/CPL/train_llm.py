@@ -20,6 +20,8 @@ from mixup import mixup_data_augmentation_llm
 from sam import SAM
 import logging
 
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
+os.environ["OPENAI_API_KEY"] = "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"
 
 class Manager(object):
     def __init__(self, config) -> None:
