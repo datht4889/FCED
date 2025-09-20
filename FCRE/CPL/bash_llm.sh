@@ -10,7 +10,7 @@ do
                 do
                     for r in 0.1 0.05
                     do
-                        CUDA_VISIBLE_DEVICES=0 python train_llm.py \
+                        CUDA_VISIBLE_DEVICES=1 python train_llm.py \
                             --task_name $t \
                             --num_k 5 \
                             --num_gen 5 \
