@@ -305,6 +305,7 @@ class Manager(object):
         self.r2desc = self._read_description(self.config.relation_description)
 
         # encoder
+        print("build model")
         encoder = EncodingModel_LLM2vec(self.config)
 
         # step is continual task number
@@ -313,7 +314,9 @@ class Manager(object):
         memory_samples = {}
         data_generation = []
         
+        print("load tokenizer")
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
+
         print("start training")
         for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
