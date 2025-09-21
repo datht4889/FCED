@@ -314,6 +314,7 @@ class Manager(object):
         data_generation = []
         
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
+        print("start training")
         for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
             
