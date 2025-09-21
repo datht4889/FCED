@@ -12,14 +12,17 @@ from config import Config
 
 from sampler_bert_llm import data_sampler_CFRL
 from data_loader import get_data_loader_BERTLLM
-from utils_llm import Moment_LLM, gen_data
+from utils_llm import Moment, gen_data
 from encoder_llm import EncodingModel_LLM2vec
 from add_loss import MultipleNegativesRankingLoss, SupervisedSimCSELoss, ContrastiveLoss, NegativeCosSimLoss
 from transformers import BertTokenizer
 from mixup import mixup_data_augmentation_llm
-from sam import *
+from sam import SAM
 import logging
 
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
+# os.environ["OPENAI_API_KEY"] = "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"
 
 class Manager(object):
     def __init__(self, config) -> None:
@@ -102,27 +105,8 @@ class Manager(object):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            # base_optimizer = optim.Adam
-            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-
-            if self.config.base_optimizer == 'Adam':
-                base_optimizer = optim.Adam
-            elif self.config.base_optimizer == 'AdamW':
-                base_optimizer = optim.AdamW
-            if self.config.sam_optimizer=='SAM':
-                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='ASAM':
-                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='ESAM':
-                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='GCSAM':
-                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='FriendlySAM':
-                optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='LookbehindASAM':
-                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='LookbehindSAM':
-                optimizer = LookbehindSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            base_optimizer = optim.Adam
+            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
@@ -162,27 +146,8 @@ class Manager(object):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
         optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            # base_optimizer = optim.Adam
-            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-
-            if self.config.base_optimizer == 'Adam':
-                base_optimizer = optim.Adam
-            elif self.config.base_optimizer == 'AdamW':
-                base_optimizer = optim.AdamW
-            if self.config.sam_optimizer=='SAM':
-                optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='ASAM':
-                optimizer = ASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='ESAM':
-                optimizer = ESAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='GCSAM':
-                optimizer = GCSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='FriendlySAM':
-                optimizer = FriendlySAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='LookbehindASAM':
-                optimizer = LookbehindASAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
-            elif self.config.sam_optimizer=='LookbehindSAM':
-                optimizer = LookbehindSAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
+            base_optimizer = optim.Adam
+            optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
         encoder.train()
         epoch = 1
         
@@ -353,7 +318,7 @@ class Manager(object):
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
             
             # Initialization
-            self.moment = Moment_LLM(self.config)
+            self.moment = Moment(self.config)
 
             # Train current task
             training_data_initialize = []
@@ -439,46 +404,30 @@ class Manager(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--task_name", default="FewRel", type=str)
-    parser.add_argument("--total_round", default=5, type=int)
     parser.add_argument("--num_k", default=5, type=int)
     parser.add_argument("--num_gen", default=2, type=int)
     parser.add_argument("--mixup", action = 'store_true', default=False)
-    parser.add_argument("--lr", default=1e-5, type=float)
-    parser.add_argument("--batch-size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int)
     parser.add_argument("--epoch_mem", default=6, type=int)
-    parser.add_argument("--device", default="cuda", type=str)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
-    parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--SAM_type", default="", type=str, help="current for SAM in current task or full for SAM in all data")
-    parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--rho", default=0.05, type=float)
-    parser.add_argument("--decay", default=0, type=float)
-
     
     args = parser.parse_args()
     config = Config('config_llm.ini')
     config.task_name = args.task_name
-    config.total_round = args.total_round
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
-    config.lr = args.lr
-    config.batch_size = args.batch_size
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
-    config.device = args.device
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
-
-    config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
-    config.sam_optimizer = args.sam_optimizer
     config.rho = args.rho
-    config.decay = args.decay
 
     # config 
     print('#############params############')
@@ -532,7 +481,7 @@ if __name__ == '__main__':
     if args.mixup: pre += "mixup|"
     if args.SAM: pre += "SAM"
 
-    file_handler = logging.FileHandler(f'CPL-LLM-{pre}-logs-task_{config.task_name}-SAM_type_{config.SAM_type}-SAM_optimizer_{config.sam_optimizer}-rho_{config.rho}.log')
+    file_handler = logging.FileHandler(f'CPL-LLM-{pre}-logs-task_{config.task_name}-shot_{config.num_k}-numgen_{config.num_gen}-epoch_{config.epoch}_{config.epoch_mem}-lossfactor_{config.mixup_loss_1}_{config.mixup_loss_2}-rho_{config.rho}-SAM_type_{config.SAM_type}-lr_{config.lr}.log')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
@@ -558,8 +507,8 @@ if __name__ == '__main__':
     acc_list = []
     for i in range(config.total_round):
         config.seed = base_seed + i * 100
-        print('--------Round ', i)
         config.current_round = i
+        print('--------Round ', i)
         print('seed: ', config.seed)
         logger.info(f"--------Round {i}")
         logger.info(f"seed: {config.seed}")
@@ -571,9 +520,9 @@ if __name__ == '__main__':
     accs = np.array(acc_list)
     ave = np.mean(accs, axis=0)
     print('----------END')
-    print('his_acc mean: ', np.around(ave, 4)*100)
+    print('his_acc mean: ', np.around(ave, 4))
     logger.info('----------END')
-    logger.info(f'his_acc mean: {np.around(ave, 4)*100}')
+    logger.info(f'his_acc mean: {np.around(ave, 4)}')
 
 
 
