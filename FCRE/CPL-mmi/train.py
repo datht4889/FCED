@@ -7,11 +7,11 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
-from transformers import set_seed, enable_full_determinism
-import os
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-
+# from transformers import set_seed, enable_full_determinism
+# import os
+# os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 from config import Config
+
 from sampler import data_sampler_CFRL
 from data_loader import get_data_loader_BERT
 from utils import Moment, gen_data
@@ -23,6 +23,12 @@ from sam import *
 from dotenv import load_dotenv
 import os
 import logging
+
+# Load environment variables from .env file
+load_dotenv("./.env")
+
+# Now you can access the environment variables using os.getenv()
+api_key = os.getenv('OPENAI_API_KEY')
 
 
 class Manager(object):
@@ -113,10 +119,10 @@ class Manager(object):
             optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         elif self.config.base_optimizer == 'AdamW':
             optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+            
         if self.config.SAM:
             # base_optimizer = optim.AdamW
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-
             if self.config.base_optimizer == 'Adam':
                 base_optimizer = optim.Adam
             elif self.config.base_optimizer == 'AdamW':
@@ -226,15 +232,14 @@ class Manager(object):
         print('')           
     def train_model_mixup(self, encoder, training_data):
         data_loader = get_data_loader_BERT(self.config, training_data, shuffle=True)
-
         if self.config.base_optimizer == 'Adam':
             optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
         elif self.config.base_optimizer == 'AdamW':
             optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+            
         if self.config.SAM:
             # base_optimizer = optim.AdamW
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-            
             if self.config.base_optimizer == 'Adam':
                 base_optimizer = optim.Adam
             elif self.config.base_optimizer == 'AdamW':
@@ -417,7 +422,8 @@ class Manager(object):
 
 
     def train(self):
-        enable_full_determinism(self.config.seed)
+        # enable_full_determinism(self.config.seed)
+        
         # sampler 
         sampler = data_sampler_CFRL(config=self.config, seed=self.config.seed)
         self.config.vocab_size = sampler.config.vocab_size
@@ -550,7 +556,6 @@ if __name__ == '__main__':
     config.sam_optimizer = args.sam_optimizer
     config.decay = args.decay
     
-
     print("CPL MMI Start")
     print(f'task_name: {config.task_name}')
     print(f'mixup: {config.mixup}')
@@ -582,7 +587,7 @@ if __name__ == '__main__':
             config.training_data = './data/CFRLFewRel/CFRLdata_10_100_10_10/train_0.txt'
             config.valid_data = './data/CFRLFewRel/CFRLdata_10_100_10_10/valid_0.txt'
             config.test_data = './data/CFRLFewRel/CFRLdata_10_100_10_10/test_0.txt'
-    elif config.task_name == 'Tacred':
+    else:
         config.rel_index = './data/CFRLTacred/rel_index.npy'
         config.relation_name = './data/CFRLTacred/relation_name.txt'
         config.relation_description = './data/CFRLTacred/relation_description.txt'
@@ -624,15 +629,19 @@ if __name__ == '__main__':
     logger.info('#############params############')
 
     # seed 
-    enable_full_determinism(config.seed)
+    # enable_full_determinism(config.seed)
+    random.seed(config.seed) 
+    np.random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed_all(config.seed)   
     base_seed = config.seed
 
     acc_list = []
     for i in range(config.total_round):
         config.seed = base_seed + i * 100
-        enable_full_determinism(config.seed)
-        print('--------Round ', i)
+        # enable_full_determinism(config.seed)
         config.current_round = i
+        print('--------Round ', i)
         print('seed: ', config.seed)
         logger.info(f"--------Round {i}")
         logger.info(f"seed: {config.seed}")
@@ -644,13 +653,9 @@ if __name__ == '__main__':
     accs = np.array(acc_list)
     ave = np.mean(accs, axis=0)
     print('----------END')
-    print('his_acc mean: ', np.around(ave, 4))
+    print('his_acc mean: ', np.around(ave, 4)*100)
     logger.info('----------END')
     logger.info(f'his_acc mean: {np.around(ave, 4)*100}')
-    print("CPL MMI finished!")
-    logger.info(f'SAM: {config.SAM}')
-    logger.info(f'SAM Optimizer: {config.sam_optimizer}')
-    logger.info(f'decay: {config.decay}')
 
 
 
@@ -658,5 +663,4 @@ if __name__ == '__main__':
         
             
             
-
 
