@@ -438,6 +438,11 @@ class Manager(object):
         data_generation = []
         seen_proto = []
         self.distill_loss_list = []
+
+        # Log for each task
+        current_relations_by_task = []
+        all_cur_acc_by_task = []
+        test_data_initialize_cur_by_task = []
         
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
 
@@ -537,7 +542,22 @@ class Manager(object):
             logger.info(f"cur_acc: {cur_acc}")
             logger.info(f"his_acc: {total_acc}")
 
+            if self.config.eval_each_task:
+                # Eval all current tasks
+                cur_acc_by_task = []
+                current_relations_by_task.append(current_relations)
+                test_data_initialize_cur_by_task.append(test_data_initialize_cur)
+                for test_data in test_data_initialize_cur_by_task:
+                    cur_acc_by_task.append('{:.4f}'.format(self.eval_encoder_proto(encoder, seen_proto, seen_relid, test_data)))
+
+                all_cur_acc_by_task.append(cur_acc_by_task)
+                print('all_cur_acc_by_task: ', all_cur_acc_by_task)
+                logger.info(f"all_cur_acc_by_task: {all_cur_acc_by_task}")
+
+
+
         torch.cuda.empty_cache()
+
         return total_acc_num
 
 
@@ -560,6 +580,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch-size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int) # 8, 10
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
+    parser.add_argument("--eval_each_task", action = 'store_true', default=False)
     # SAM
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
@@ -596,6 +617,7 @@ if __name__ == '__main__':
     config.batch_size = args.batch_size
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
+    config.eval_each_task = args.eval_each_task
 
     config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
