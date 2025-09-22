@@ -429,6 +429,12 @@ if __name__ == '__main__':
     config.SAM_type = args.SAM_type
     config.rho = args.rho
 
+    print("CPL LLM2Vec Start")
+    print(f'task_name: {config.task_name}')
+    print(f'mixup: {config.mixup}')
+    print(f'SAM: {config.SAM}')
+    print(f'SAM_type: {config.SAM_type}')
+
     # config 
     print('#############params############')
     print(config.device)
