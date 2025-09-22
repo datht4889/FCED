@@ -500,7 +500,7 @@ if __name__ == '__main__':
     if args.mixup: pre += "mixup|"
     if args.SAM: pre += "SAM"
 
-    file_handler = logging.FileHandler(f'CPL-LLM-{pre}-logs-task_{config.task_name}-shot_{config.num_k}-numgen_{config.num_gen}-epoch_{config.epoch}_{config.epoch_mem}-lossfactor_{config.mixup_loss_1}_{config.mixup_loss_2}-rho_{config.rho}-SAM_type_{config.SAM_type}-lr_{config.lr}.log')
+    file_handler = logging.FileHandler(f'CPL-LLM-{pre}-logs-task_{config.task_name}-shot_{config.num_k}-{config.sam_optimizer}-lr_{config.lr}-decay_{config.decay}.log')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
