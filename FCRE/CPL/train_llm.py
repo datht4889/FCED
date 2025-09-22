@@ -490,7 +490,6 @@ if __name__ == '__main__':
     # model and data
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--task_name", default="Tacred", type=str)
-    parser.add_argument("--model", default="bert", type=str)
     # mixup settings
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
@@ -501,6 +500,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch-size", default=16, type=int)
     parser.add_argument("--epoch", default=8, type=int) # 8, 10
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
+    parser.add_argument("--total_round", default=6, type=int)
     # SAM
     parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
@@ -520,7 +520,6 @@ if __name__ == '__main__':
     config = Config('config_llm.ini')
 
     config.task_name = args.task_name
-    config.model = args.model
     config.device = args.device
     config.num_k = args.num_k
     config.num_gen = args.num_gen
@@ -531,6 +530,7 @@ if __name__ == '__main__':
     config.batch_size = args.batch_size
     config.epoch = args.epoch
     config.epoch_mem = args.epoch_mem
+    config.total_round = args.total_round
 
     config.base_optimizer = args.base_optimizer
     config.SAM = args.SAM
@@ -650,3 +650,20 @@ if __name__ == '__main__':
             
             
 
+# CUDA_VISIBLE_DEVICES=0 python train_llm.py --task_name Tacred \
+#     --num_k 5 \
+#     --num_gen 5 \
+#     --base_optimizer AdamW \
+#     --decay 0.01 \
+#     --mixup \
+#     --SAM \
+#     --sam_optimizer ASAM \
+#     --rho 0.1 \
+#     --rho_weight 6 \
+#     --dynamic-rho \
+#     --distill \
+#     --distill_type RKD \
+#     --distill_loss_weight 0 \
+#     --distill_top_k 10 \
+#     --batch-size 2 \
+#     --total_round 1
