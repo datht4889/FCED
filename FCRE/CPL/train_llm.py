@@ -415,9 +415,12 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=6, type=int)
     parser.add_argument("--mixup_loss_1", default=0.25, type=float)
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
+    parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
+    parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--SAM_type", default="", type=str, help="current for SAM in current task or full for SAM in all data")
     parser.add_argument("--rho", default=0.05, type=float)
+    parser.add_argument("--decay", default=0, type=float)
     
     args = parser.parse_args()
     config = Config('config_llm.ini')
@@ -432,6 +435,18 @@ if __name__ == '__main__':
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
     config.rho = args.rho
+    config.decay = args.decay
+    config.base_optimizer = args.base_optimizer
+    config.sam_optimizer = args.sam_optimizer
+
+    print("CPL LLM2Vec Start")
+    print(f'task_name: {config.task_name}')
+    print(f'mixup: {config.mixup}')
+    print(f'base_optimizer: {config.base_optimizer}')
+    print(f'SAM: {config.SAM}')
+    print(f'SAM_type: {config.SAM_type}')
+    print(f'SAM Optimizer: {config.sam_optimizer}')
+    print(f'decay: {config.decay}')
 
     # config 
     print('#############params############')
@@ -537,3 +552,10 @@ if __name__ == '__main__':
             
             
 
+# CUDA_VISIBLE_DEVICES=0 python train_llm.py --task_name Tacred \
+#     --num_k 5 \
+#     --num_gen 5 \
+#     --mixup \
+#     --SAM \
+#     --sam_optimizer ASAM \
+#     --rho 0.1
