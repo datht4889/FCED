@@ -10,8 +10,9 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.cluster import KMeans
-from transformers import set_seed, enable_full_determinism
-import os
+# from transformers import set_seed, enable_full_determinism
+# import os
+# os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
 from config import Config
 from sampler import data_sampler_CFRL
@@ -457,7 +458,7 @@ class Manager(object):
 
 
     def train(self):
-        enable_full_determinism(self.config.seed)
+        # enable_full_determinism(self.config.seed)
         # sampler 
         sampler = data_sampler_CFRL(config=self.config, seed=self.config.seed)
         self.config.vocab_size = sampler.config.vocab_size
@@ -723,13 +724,13 @@ if __name__ == '__main__':
     logger.info('#############params############')
 
     # seed 
-    enable_full_determinism(config.seed)
+    # enable_full_determinism(config.seed)
     base_seed = config.seed
 
     acc_list = []
     for i in range(config.total_round):
         config.seed = base_seed + i * 100
-        enable_full_determinism(config.seed)
+        # enable_full_determinism(config.seed)
         print('--------Round ', i)
         config.current_round = i
         print('seed: ', config.seed)

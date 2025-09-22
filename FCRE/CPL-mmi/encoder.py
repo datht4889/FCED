@@ -12,24 +12,11 @@ class EncodingModel(nn.Module):
         nn.Module.__init__(self)
         self.config = config
         if config.model == 'bert':
-            self.bert_config = BertConfig.from_pretrained(config.bert_path)
-            self.bert_config.attn_implementation = 'eager'
-            self.bert_config.deterministic_flash_attn = True
-            self.encoder = BertModel.from_pretrained(config.bert_path, config=self.bert_config).to(config.device)
+            self.encoder = BertModel.from_pretrained(config.bert_path).to(config.device)
             self.lm_head = BertForMaskedLM.from_pretrained(config.bert_path).to(config.device).cls
         elif config.model == 'roberta':
             self.encoder = RobertaModel.from_pretrained(config.roberta_path).to(config.device)
             self.encoder.resize_token_embeddings(config.vocab_size)
-            self.lm_head = RobertaForMaskedLM.from_pretrained(config.roberta_path).to(config.device).cls
-        elif config.model == "bge":
-            self.encoder = AutoModel.from_pretrained(config.bge_path, trust_remote_code=True).to(config.device)
-            self.encoder.resize_token_embeddings(config.vocab_size)
-            self.lm_head = AutoModelForMaskedLM.from_pretrained(config.bge_path, trust_remote_code=True).to(config.device).cls
-        elif config.model == "nvembed":
-            self.encoder = AutoModel.from_pretrained(config.nvembed_path, trust_remote_code=True).to(config.device)
-            self.encoder.resize_token_embeddings(config.vocab_size) 
-            self.lm_head = AutoModelForMaskedLM.from_pretrained(config.nvembed_path, trust_remote_code=True).to(config.device).cls
-        
         if config.tune == 'prompt':
             for param in self.encoder.parameters():
                 param.requires_grad = False
