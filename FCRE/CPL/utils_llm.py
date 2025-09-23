@@ -163,6 +163,8 @@ class Moment_LLM:
         mask_combined_pos = (labels.unsqueeze(1) == ct_y.unsqueeze(0)).to(self.config.device)
         mask_combined_neg = ~mask_combined_pos
 
+        breakpoint()
+
         # Ensure all tensors have the same shape before element-wise operations
         assert exp_dot_tempered_pos.shape == mask_combined_pos.shape, f"Shape mismatch: exp_pos {exp_dot_tempered_pos.shape} vs mask_pos {mask_combined_pos.shape}"
         assert exp_dot_tempered_neg.shape == mask_combined_neg.shape, f"Shape mismatch: exp_neg {exp_dot_tempered_neg.shape} vs mask_neg {mask_combined_neg.shape}"
