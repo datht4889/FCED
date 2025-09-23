@@ -593,7 +593,7 @@ if __name__ == '__main__':
     # Distillation
     parser.add_argument("--distill", action='store_true', default=False)
     parser.add_argument("--distill_type", default="none", type=str)
-    parser.add_argument("--distill_loss_weight", default=0.25, type=float)
+    parser.add_argument("--distill_loss_weight", default=0, type=float)
     parser.add_argument("--distill_top_k", default=10, type=int)
 
     args = parser.parse_args()
