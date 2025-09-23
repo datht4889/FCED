@@ -140,6 +140,9 @@ class Manager(object):
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
                 hidden, outputs_words, topk_hidden_indices = encoder(instance['input'], is_distill=True, top_k=self.config.distill_top_k)
+                if hidden.shape[0] != self.config.batch_size:
+                    print('something wrong')
+                    breakpoint()
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
                     old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
