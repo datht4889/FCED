@@ -492,25 +492,16 @@ class EncodingModel_LLM2vec(nn.Module):
             output_attentions=True if is_distill else None
         )
 
-        breakpoint()
         
         # Get last hidden states
         last_hidden_state = outputs.last_hidden_state
-        attention_mask = input_data['attention_mask']
+        attention_scores = outputs.attentions
 
-        # Apply mean pooling to get sentence-level embeddings
-        masked_embeddings = last_hidden_state * attention_mask.unsqueeze(-1).float()
-        summed_embeddings = masked_embeddings.sum(dim=1)
-        seq_lengths = attention_mask.sum(dim=1, keepdim=True).float()
-        embeddings = summed_embeddings / seq_lengths  # Shape: [batch_size, hidden_size]
+        embeddings = self.encoder.get_pooling(input_data, last_hidden_state)  # Shape: [batch_size, hidden_size]
         assert embeddings.shape[0] == batch_size, f"{embeddings.shape[0]} != {batch_size}, {embeddings.shape}, {last_hidden_state.shape}"
-        
-        # Apply mean pooling like original LLM2Vec implementation
-        attention_mask = input_data['attention_mask']
         
         if is_distill:
             # Get the last layer attention scores (similar to EncodingModel)
-            attention_scores = outputs.attentions
             attentions_layer = attention_scores[-1]  # choose last layer
             
             # Column-wise sum over queries (dim=2). Result: (B, H, S)
@@ -520,6 +511,7 @@ class EncodingModel_LLM2vec(nn.Module):
             token_scores = col_sum_per_head.mean(dim=1)  # (B, S)
             
             # Mask out padding tokens
+            attention_mask = input_data['attention_mask']
             mask = attention_mask.to(token_scores.dtype)
             token_scores = token_scores * mask
             
