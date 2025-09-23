@@ -84,13 +84,18 @@ class Moment_LLM:
     def update(self, ind, feature, is_memory=False):
         if not is_memory:
             if feature.shape[0] != self.features[ind].shape[0]:
-                print('feature shape error')
-                print
+                print("feature shape error")
                 return
-            
+
+            # Match dtype + device of destination
+            feature = feature.to(dtype=self.features[ind].dtype,
+                                device=self.features[ind].device)
             self.features[ind] = feature
         else:
+            feature = feature.to(dtype=self.mem_features[ind].dtype,
+                                device=self.mem_features[ind].device)
             self.mem_features[ind] = feature
+
     
     def update_allmem(self, encoder):
             data_loader = get_data_loader_BERTLLM(self.config, self.mem_samples, batch_size=64) # shuffle=False
