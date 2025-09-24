@@ -136,8 +136,9 @@ class Moment_LLM:
             else:  # sample number > total feature
                 sample_id = idx
             ct_x = self.features[sample_id].to(self.config.device) # (N, H)
-            ct_y = self.labels[sample_id] # (N)
+            ct_y = self.labels[sample_id].to(self.config.device) # (N)
         ct_x = ct_x.to(x.dtype)
+        labels = labels.to(self.config.device)
 
         # l2 normalize
         x = F.normalize(x, p=2, dim=1).to(self.config.device)
