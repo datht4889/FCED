@@ -30,6 +30,10 @@ class Manager(object):
     def __init__(self, config) -> None:
         super().__init__()
         self.config = config
+        # Initialize gradient masking storage
+        self.previous_task_masks = {}  # Store masks from previous tasks
+        self.task_weights = []  # Store weights for mask aggregation
+        self.num_completed_tasks = 0
         
     def _edist(self, x1, x2):
         '''
@@ -112,6 +116,92 @@ class Manager(object):
 
         return mem_set, mem_feas
         # return mem_set, features, rel_proto
+    
+    def generate_task_attention_masks(self, encoder, training_data):
+        """Generate attention masks for the current task using rollout attention"""
+        if not self.config.gradient_masking:
+            return {}
+            
+        print("Generating attention masks for current task...")
+        logger.info("Generating attention masks for current task...")
+        
+        # Use a subset of training data to generate masks (for efficiency)
+        if self.config.use_llm:
+            data_loader = get_data_loader_BERTLLM(self.config, training_data[:min(50, len(training_data))], 
+                                                shuffle=False, drop_last=False, batch_size=1)
+        else:
+            data_loader = get_data_loader_BERT(self.config, training_data[:min(50, len(training_data))], 
+                                             shuffle=False, drop_last=False, batch_size=1)
+        
+        layer_masks_collection = []
+        encoder.eval()
+        
+        for step, (instance, label, idx) in enumerate(data_loader):
+            if self.config.use_llm:
+                # Generate masks using attention patterns
+                _ = encoder(instance['input'], is_attn_mask=True)
+            else:
+                # Generate masks using attention patterns
+                _ = encoder(instance, is_attn_mask=True)
+            
+            # The encoder's is_attn_mask already generates layer_masks
+            # We need to extract them after forward pass
+            # For now, we'll use a simplified approach
+            if hasattr(encoder, '_current_layer_masks'):
+                layer_masks_collection.append(encoder._current_layer_masks)
+        
+        # Aggregate masks across samples
+        if layer_masks_collection:
+            aggregated_masks = {}
+            # Get all layer indices
+            all_layer_indices = set()
+            for masks in layer_masks_collection:
+                all_layer_indices.update(masks.keys())
+            
+            for layer_idx in all_layer_indices:
+                layer_mask_list = []
+                for masks in layer_masks_collection:
+                    if layer_idx in masks:
+                        layer_mask_list.append(masks[layer_idx])
+                
+                if layer_mask_list:
+                    # Average masks across samples
+                    aggregated_masks[layer_idx] = torch.stack(layer_mask_list).mean(dim=0)
+            
+            return aggregated_masks
+        
+        return {}
+    
+    def aggregate_previous_masks(self, current_masks):
+        """Aggregate current task masks with previous task masks"""
+        if not self.previous_task_masks or not current_masks:
+            return current_masks
+        
+        aggregated_masks = {}
+        all_layer_indices = set(current_masks.keys()) | set(self.previous_task_masks.keys())
+        
+        for layer_idx in all_layer_indices:
+            current_mask = current_masks.get(layer_idx, None)
+            previous_mask = self.previous_task_masks.get(layer_idx, None)
+            
+            if current_mask is not None and previous_mask is not None:
+                if self.config.mask_aggregation == "weighted":
+                    # Weight recent tasks more heavily
+                    current_weight = 0.7
+                    previous_weight = 0.3
+                else:  # uniform
+                    current_weight = 0.5
+                    previous_weight = 0.5
+                
+                aggregated_masks[layer_idx] = (
+                    current_weight * current_mask + previous_weight * previous_mask
+                )
+            elif current_mask is not None:
+                aggregated_masks[layer_idx] = current_mask
+            elif previous_mask is not None:
+                aggregated_masks[layer_idx] = previous_mask
+        
+        return aggregated_masks
         
     def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None, seen_relid=None):
         if self.config.use_llm:
@@ -147,6 +237,12 @@ class Manager(object):
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
+        # Apply gradient masking if we're training on memory and have previous task masks
+        if is_memory and self.config.gradient_masking and self.previous_task_masks:
+            print("Applying gradient masking for memory training...")
+            logger.info("Applying gradient masking for memory training...")
+            encoder.register_gradient_masking_hooks(self.previous_task_masks)
+
         if is_memory and self.config.distill and self.config.distill_type != 'none':
             self.distill_loss_list = []
             if self.config.distill_type == 'RKD':
@@ -159,10 +255,10 @@ class Manager(object):
                 if self.config.use_llm:
                     hidden = encoder(instance['input'])
                 else:
-                    hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, is_attn_mask=True, top_k=self.config.distill_top_k)
                 loss = self.moment.contrastive_loss(hidden, labels, is_memory)  
                 if is_memory and self.config.distill and self.config.distill_type != 'none':
-                    old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                    old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, is_attn_mask=True, top_k=self.config.distill_top_k)
                     old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
                     topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
@@ -191,12 +287,12 @@ class Manager(object):
                     if self.config.use_llm:
                         hidden = encoder(instance['input'])
                     else:
-                        hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        hidden, outputs_words, topk_hidden_indices = encoder(instance, is_distill=True, is_attn_mask=True, top_k=self.config.distill_top_k)
 
                     loss = self.moment.contrastive_loss(hidden, labels, is_memory)
 
                     if is_memory and self.config.distill and self.config.distill_type != 'none':
-                        old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
+                        old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, is_attn_mask=True, top_k=self.config.distill_top_k)
                         old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
                         topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                         if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
@@ -221,7 +317,13 @@ class Manager(object):
                     sys.stdout.write('CurrentTrain: epoch {0:2}, batch {1:5} | loss: {2:2.7f}'.format(i, batch_num, loss.item()) + '\r')
                     # logger.info('CurrentTrain: epoch {0:2}, batch {1:5} | loss: {2:2.7f}'.format(i, batch_num, loss.item()))
                 sys.stdout.flush() 
-        print('')           
+        print('')
+        
+        # Remove gradient masking hooks after training
+        if is_memory and self.config.gradient_masking:
+            encoder.remove_gradient_masking_hooks()
+            print("Removed gradient masking hooks after training")
+            logger.info("Removed gradient masking hooks after training")           
     def train_model_mixup(self, encoder, training_data):
         if self.config.use_llm:
             data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
@@ -469,7 +571,7 @@ class Manager(object):
                 self.config.SAM = True
             if self.config.SAM_type == 'full' :
                 self.config.SAM = True
-            # self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
+            self.moment.init_moment(encoder, training_data_initialize, is_memory=False)
             self.train_model(encoder, old_encoder, training_data_initialize)
             if self.config.SAM_type == 'current':
                 self.config.SAM = False
@@ -477,6 +579,24 @@ class Manager(object):
             # Select memory samples
             for rel in current_relations:
                 memory_samples[rel], _ = self.select_memory(encoder, training_data[rel])
+
+            # Generate and store attention masks for gradient masking
+            if self.config.gradient_masking:
+                print("Generating task attention masks...")
+                logger.info("Generating task attention masks...")
+                current_task_masks = self.generate_task_attention_masks(encoder, training_data_initialize)
+                
+                # Aggregate with previous masks
+                if current_task_masks:
+                    aggregated_masks = self.aggregate_previous_masks(current_task_masks)
+                    self.previous_task_masks = aggregated_masks
+                    self.num_completed_tasks += 1
+                    
+                    print(f"Generated masks for {len(current_task_masks)} layers, total completed tasks: {self.num_completed_tasks}")
+                    logger.info(f"Generated masks for {len(current_task_masks)} layers, total completed tasks: {self.num_completed_tasks}")
+                else:
+                    print("No attention masks generated for current task")
+                    logger.info("No attention masks generated for current task")
 
             # Data gen
             if self.config.gen == 1:
@@ -595,6 +715,11 @@ if __name__ == '__main__':
     parser.add_argument("--distill_type", default="none", type=str)
     parser.add_argument("--distill_loss_weight", default=0, type=float)
     parser.add_argument("--distill_top_k", default=10, type=int)
+    # Gradient Masking
+    parser.add_argument("--gradient_masking", action='store_true', default=False)
+    parser.add_argument("--mask_layers", default="all", type=str)  # "all", "last", or "first_half"
+    parser.add_argument("--mask_aggregation", default="weighted", type=str)  # "weighted", "uniform"
+    parser.add_argument("--mask_threshold_method", default="adaptive", type=str)  # "adaptive", "fixed"
 
     args = parser.parse_args()
     if args.use_llm:
@@ -633,6 +758,11 @@ if __name__ == '__main__':
     config.distill_loss_weight = args.distill_loss_weight
     config.distill_top_k = args.distill_top_k
 
+    config.gradient_masking = args.gradient_masking
+    config.mask_layers = args.mask_layers
+    config.mask_aggregation = args.mask_aggregation
+    config.mask_threshold_method = args.mask_threshold_method
+
     print("CPL Start")
     print(f'model: {config.model}')
     print(f'task_name: {config.task_name}')
@@ -646,6 +776,9 @@ if __name__ == '__main__':
     print(f'Distillation type: {config.distill_type}')
     print(f'Distillation alpha: {config.distill_loss_weight}')
     print(f'Distillation top_k: {config.distill_top_k}')
+    print(f'Gradient Masking: {config.gradient_masking}')
+    print(f'Mask layers: {config.mask_layers}')
+    print(f'Mask aggregation: {config.mask_aggregation}')
 
     # config 
     print('#############params############')
@@ -746,6 +879,9 @@ if __name__ == '__main__':
     logger.info(f'SAM_type: {config.SAM_type}')
     logger.info(f'SAM Optimizer: {config.sam_optimizer}')
     logger.info(f'decay: {config.decay}')
+    logger.info(f'Gradient Masking: {config.gradient_masking}')
+    logger.info(f'Mask layers: {config.mask_layers}')
+    logger.info(f'Mask aggregation: {config.mask_aggregation}')
 
 
 

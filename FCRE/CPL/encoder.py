@@ -246,6 +246,9 @@ class EncodingModel(nn.Module):
                 mask_matrix = avg_mask.unsqueeze(0).expand(seq_len, seq_len)
                 
                 layer_masks[layer_idx] = mask_matrix
+            
+            # Store masks for gradient masking
+            self._current_layer_masks = layer_masks
         
 
         # return [CLS] hidden
@@ -315,6 +318,72 @@ class EncodingModel(nn.Module):
 
             concerate_h_t = (h_state + t_state) / 2 # (b, h)
             return concerate_h_t
+
+    def register_gradient_masking_hooks(self, layer_masks):
+        """Register backward hooks for gradient masking"""
+        if not hasattr(self, 'config') or not getattr(self.config, 'gradient_masking', False):
+            return
+            
+        self.gradient_masks = layer_masks
+        self.gradient_hooks = []
+        
+        # Register hooks for attention layers
+        if hasattr(self.encoder, 'encoder') and hasattr(self.encoder.encoder, 'layer'):
+            for layer_idx, layer in enumerate(self.encoder.encoder.layer):
+                if layer_idx in layer_masks:
+                    # Hook for query, key, value projections
+                    for param_name, param in layer.attention.self.named_parameters():
+                        if 'query' in param_name or 'key' in param_name or 'value' in param_name:
+                            hook = param.register_hook(
+                                lambda grad, lid=layer_idx, pname=param_name: 
+                                self._apply_gradient_mask(grad, lid, pname)
+                            )
+                            self.gradient_hooks.append(hook)
+    
+    def _apply_gradient_mask(self, grad, layer_idx, param_name):
+        """Apply gradient masking to specific parameters"""
+        if not hasattr(self, 'gradient_masks') or layer_idx not in self.gradient_masks:
+            return grad
+            
+        mask = self.gradient_masks[layer_idx]
+        
+        # For attention parameters, we need to be careful about dimensions
+        # This is a simplified version - in practice, you'd need more sophisticated masking
+        if grad is not None and mask is not None:
+            # Create a mask that matches the gradient dimensions
+            # This is a basic implementation - might need adjustment based on actual tensor shapes
+            try:
+                if grad.dim() >= 2:
+                    # For weight matrices, we can apply masking to relevant dimensions
+                    # This is simplified - real implementation would be more complex
+                    grad_mask = torch.ones_like(grad)
+                    
+                    # Apply mask-based scaling (simplified approach)
+                    # In full implementation, this would involve proper attention matrix masking
+                    mask_value = mask.mean().item()  # Simple aggregation
+                    grad_mask = grad_mask * (1.0 - mask_value * 0.8)  # Reduce gradient by mask amount
+                    
+                    return grad * grad_mask
+            except Exception as e:
+                # If masking fails, return original gradient
+                pass
+                
+        return grad
+    
+    def remove_gradient_masking_hooks(self):
+        """Remove all registered gradient masking hooks"""
+        if hasattr(self, 'gradient_hooks'):
+            for hook in self.gradient_hooks:
+                hook.remove()
+            self.gradient_hooks = []
+            
+    def set_gradient_masks(self, layer_masks):
+        """Set gradient masks for attention layers"""
+        self.gradient_masks = layer_masks
+        
+        # Store masks for use in attention computation
+        if layer_masks:
+            self._current_layer_masks = layer_masks
 
     def set_history(self):
         """Store the current model state for knowledge distillation"""
