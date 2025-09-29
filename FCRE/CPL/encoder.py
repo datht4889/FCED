@@ -142,7 +142,7 @@ class EncodingModel(nn.Module):
         return masks_1, masks_2
 
             
-    def forward(self, inputs, is_augment=False, is_distill=False, top_k=10): # (b, max_length)
+    def forward(self, inputs, is_augment=False, is_distill=False, is_attn_mask=False, top_k=10): # (b, max_length)
         inputs['ids'] = inputs['ids'].to(self.config.device)
         inputs['mask'] = inputs['mask'].to(self.config.device)
         batch_size = inputs['ids'].size()[0]
@@ -152,18 +152,12 @@ class EncodingModel(nn.Module):
         if pattern == 'softprompt' or pattern == 'hybridprompt':
             input_embedding = self.embedding_input(inputs['ids'])
             outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
-            outputs_words = outputs[0]  # (b, max_length, h)
-            try:
-                attention_scores = outputs[2] # bert
-            except:
-                attention_scores = outputs[1] # bge
+            outputs_words = outputs.last_hidden_state  # (b, max_length, h)
+            attention_scores = outputs.attentions  # bert [num_layers, b, num_heads, S, S]
         else:
             outputs = self.encoder(inputs_embeds=input_embedding, attention_mask=inputs['mask'], output_attentions=True)
-            outputs_words = outputs[0]  # (b, max_length, h)
-            try:
-                attention_scores = outputs[2] # bert
-            except:
-                attention_scores = outputs[1] # bge
+            outputs_words = outputs.last_hidden_state  # (b, max_length, h)
+            attention_scores = outputs.attentions  # bert [num_layers, b, num_heads, S, S]
             # outputs_words_des = self.encoder(inputs['ids_des'], attention_mask=inputs['mask_des'])[0] # (b, max_length, h)
 
         if is_distill:
@@ -195,6 +189,64 @@ class EncodingModel(nn.Module):
             # 8) gather hidden vectors for top-k indices -> (B, k, H)
             topk_hidden_indices = topk_indices.unsqueeze(-1).expand(-1, -1, H)   # (B, k, H)
             # topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
+
+        if is_attn_mask:
+            # Average attention across heads for each layer
+            avg_attentions = [attn.mean(dim=1) for attn in attention_scores]  # (batch, seq_len, seq_len)
+            attention_maps = []
+            rollout = None
+            for attn_layer in avg_attentions:
+                batch_size, seq_len, _ = attn_layer.shape
+                identity = torch.eye(seq_len, device=attn_layer.device).unsqueeze(0).expand(batch_size, -1, -1)
+                attn_with_identity = identity + attn_layer
+
+                if rollout is None:
+                    rollout = attn_with_identity
+                else:
+                    rollout = torch.bmm(rollout, attn_with_identity)
+                
+                # Average attention across all query positions
+                layer_map = rollout.mean(dim=1)
+
+                attention_maps.append(layer_map)
+            
+            layer_masks = {}
+            for layer_idx, attn_map in enumerate(attention_maps):
+                batch_size, seq_len = attn_map.shape
+
+                # Compute adaptive thresholds
+                thresholds = []
+                for i in range(batch_size):
+                    attn = attn_map[i]
+                    # Sort attention values in ascending order
+                    sorted_attn, _ = torch.sort(attn)
+
+                    # Compute second-order derivative
+                    # d²u/dk² = u[k+1] - 2*u[k] + u[k-1]
+                    second_derivative = sorted_attn[2:] - 2 * sorted_attn[1:-1] + sorted_attn[:-2]
+
+                    # Find minimum (inflection point where curve rises sharply)
+                    min_idx = torch.argmin(second_derivative)
+                    threshold = sorted_attn[min_idx + 1]  # +1 to account for slicing
+                    
+                    thresholds.append(threshold)
+                thresholds = torch.stack(thresholds) # (batch_size,)
+
+                # Generate binary mask: 0 for attention regions, 1 for background
+                # This inverted mask allows new gradients in background regions
+                masks = []
+                for i in range(batch_size):
+                    mask = (attn_map[i] < thresholds[i]).float()  # (seq_len,)
+                    masks.append(mask)
+                
+                # Average masks across batch and samples
+                avg_mask = torch.stack(masks).mean(dim=0)  # (seq_len,)
+                
+                # Broadcast to (seq_len, seq_len) for attention matrix masking
+                mask_matrix = avg_mask.unsqueeze(0).expand(seq_len, seq_len)
+                
+                layer_masks[layer_idx] = mask_matrix
+        
 
         # return [CLS] hidden
         if pattern == 'cls' or pattern == 'softprompt':
