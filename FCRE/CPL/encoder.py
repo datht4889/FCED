@@ -188,7 +188,7 @@ class EncodingModel(nn.Module):
             k = top_k if S > top_k else S
 
             # top-k indices and scores per example
-            topk_scores, topk_indices = torch.topk(token_probs, k=k, dim=1)
+            topk_scores, topk_indices = torch.topk(token_probs, k=k, dim=1, largest=False)
 
             B, _, H = outputs_words.size()
 
