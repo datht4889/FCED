@@ -183,11 +183,11 @@ class Manager(object):
                         mean_distill_loss = sum(self.distill_loss_list)/len(self.distill_loss_list)
                         distillation_rho = mean_distill_loss * self.config.rho_weight
                         rho_log = open('sam_rho_log.txt', 'a')
-                        rho_log.writelines("Setting rho to: ", distillation_rho)
+                        rho_log.writelines(f"Setting rho to: {distillation_rho}")
                         optimizer.first_step(zero_grad=True, rho=distillation_rho)
                     else:
                         rho_log = open('sam_rho_log.txt', 'a')
-                        rho_log.writelines("Using config rho: ", self.config.rho)
+                        rho_log.writelines(f"Using config rho: {self.config.rho}")
                         optimizer.first_step(zero_grad=True, rho=self.config.rho)
 
                     if self.config.use_llm:
