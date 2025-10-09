@@ -449,6 +449,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_llm", action = 'store_true', default=False)
     parser.add_argument("--task_name", default="Tacred", type=str) # Tacred, FewRel
+    parser.add_argument("--gen", default=1, type=int) # 0 for no gen, 1 for gen
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true', default=True)
@@ -467,6 +468,7 @@ if __name__ == '__main__':
         config = Config('config.ini')
     config.use_llm = args.use_llm
     config.task_name = args.task_name
+    config.gen = args.gen
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
