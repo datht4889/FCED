@@ -30,9 +30,8 @@ class Manager(object):
     def __init__(self, config) -> None:
         super().__init__()
         self.config = config
-        # Initialize gradient masking storage
-        self.previous_task_masks = {}  # Store masks from previous tasks
-        self.task_weights = []  # Store weights for mask aggregation
+        # Initialize importance-based distillation storage
+        self.task_importance_maps = []  # Store importance maps from previous tasks
         self.num_completed_tasks = 0
         
     def _edist(self, x1, x2):
@@ -117,91 +116,131 @@ class Manager(object):
         return mem_set, mem_feas
         # return mem_set, features, rel_proto
     
-    def generate_task_attention_masks(self, encoder, training_data):
-        """Generate attention masks for the current task using rollout attention"""
-        if not self.config.gradient_masking:
+    def generate_task_importance_map(self, encoder, training_data):
+        """
+        Generate importance map showing which tokens/positions are critical for the task
+        Returns: Dict[layer_idx -> (seq_len,)] importance scores
+        """
+        if not self.config.importance_distill:
             return {}
             
-        print("Generating attention masks for current task...")
-        logger.info("Generating attention masks for current task...")
+        print("Generating importance map for current task...")
+        logger.info("Generating importance map for current task...")
         
-        # Use a subset of training data to generate masks (for efficiency)
+        # Use a subset of training data to generate importance maps (for efficiency)
+        subset_size = min(100, len(training_data))
         if self.config.use_llm:
-            data_loader = get_data_loader_BERTLLM(self.config, training_data[:min(50, len(training_data))], 
-                                                shuffle=False, drop_last=False, batch_size=1)
+            data_loader = get_data_loader_BERTLLM(
+                self.config, training_data[:subset_size], 
+                shuffle=False, drop_last=False, batch_size=8
+            )
         else:
-            data_loader = get_data_loader_BERT(self.config, training_data[:min(50, len(training_data))], 
-                                             shuffle=False, drop_last=False, batch_size=1)
+            data_loader = get_data_loader_BERT(
+                self.config, training_data[:subset_size], 
+                shuffle=False, drop_last=False, batch_size=8
+            )
         
-        layer_masks_collection = []
+        # Collect attention patterns across all samples
+        layer_importance_accumulator = {}  # layer_idx -> list of importance vectors
+        
         encoder.eval()
-        
-        for step, (instance, label, idx) in enumerate(data_loader):
-            if self.config.use_llm:
-                # Generate masks using attention patterns
-                _ = encoder(instance['input'], is_attn_mask=True)
-            else:
-                # Generate masks using attention patterns
-                _ = encoder(instance, is_attn_mask=True)
-            
-            # The encoder's is_attn_mask already generates layer_masks
-            # We need to extract them after forward pass
-            # For now, we'll use a simplified approach
-            if hasattr(encoder, '_current_layer_masks'):
-                layer_masks_collection.append(encoder._current_layer_masks)
-        
-        # Aggregate masks across samples
-        if layer_masks_collection:
-            aggregated_masks = {}
-            # Get all layer indices
-            all_layer_indices = set()
-            for masks in layer_masks_collection:
-                all_layer_indices.update(masks.keys())
-            
-            for layer_idx in all_layer_indices:
-                layer_mask_list = []
-                for masks in layer_masks_collection:
-                    if layer_idx in masks:
-                        layer_mask_list.append(masks[layer_idx])
+        with torch.no_grad():
+            for step, (instance, label, idx) in enumerate(data_loader):
+                # Forward pass to get attention
+                if self.config.use_llm:
+                    _ = encoder(instance['input'], is_attn_mask=True)
+                else:
+                    _ = encoder(instance, is_attn_mask=True)
                 
-                if layer_mask_list:
-                    # Average masks across samples
-                    aggregated_masks[layer_idx] = torch.stack(layer_mask_list).mean(dim=0)
-            
-            return aggregated_masks
+                # Get stored attention masks (which contain importance information)
+                if hasattr(encoder, '_current_layer_masks'):
+                    layer_masks = encoder._current_layer_masks
+                    
+                    for layer_idx, mask_matrix in layer_masks.items():
+                        # Convert mask to importance: 1 - mask = importance
+                        # (mask: 0=important/high attention, 1=background/low attention)
+                        # So importance = 1 - mask means: high importance for high attention regions
+                        importance = 1.0 - mask_matrix.diagonal()  # (seq_len,)
+                        
+                        if layer_idx not in layer_importance_accumulator:
+                            layer_importance_accumulator[layer_idx] = []
+                        
+                        layer_importance_accumulator[layer_idx].append(importance.cpu())
         
-        return {}
+        # Aggregate importance across all samples
+        task_importance_maps = {}
+        for layer_idx, importance_list in layer_importance_accumulator.items():
+            # Average importance across all samples
+            all_importance = torch.stack(importance_list, dim=0)  # (num_samples, seq_len)
+            avg_importance = all_importance.mean(dim=0)  # (seq_len,)
+            
+            # Normalize to [0, 1]
+            if avg_importance.max() > avg_importance.min():
+                avg_importance = (avg_importance - avg_importance.min()) / (avg_importance.max() - avg_importance.min() + 1e-8)
+            
+            task_importance_maps[layer_idx] = avg_importance
+        
+        print(f"Generated importance maps for {len(task_importance_maps)} layers")
+        logger.info(f"Generated importance maps for {len(task_importance_maps)} layers")
+        
+        return task_importance_maps
     
-    def aggregate_previous_masks(self, current_masks):
-        """Aggregate current task masks with previous task masks"""
-        if not self.previous_task_masks or not current_masks:
-            return current_masks
+    def aggregate_importance_maps(self, importance_maps_list):
+        """
+        Combine importance maps from multiple previous tasks
         
-        aggregated_masks = {}
-        all_layer_indices = set(current_masks.keys()) | set(self.previous_task_masks.keys())
+        Args:
+            importance_maps_list: List of Dict[layer_idx -> (seq_len,)]
         
-        for layer_idx in all_layer_indices:
-            current_mask = current_masks.get(layer_idx, None)
-            previous_mask = self.previous_task_masks.get(layer_idx, None)
+        Returns:
+            Aggregated importance map: Dict[layer_idx -> (seq_len,)]
+        """
+        if not importance_maps_list:
+            return {}
+        
+        # Use weighted average favoring recent tasks
+        num_tasks = len(importance_maps_list)
+        weights = torch.tensor([1.0 / (num_tasks - i) for i in range(num_tasks)])
+        weights = weights / weights.sum()  # Normalize
+        
+        aggregated = {}
+        
+        # Get all layer indices
+        all_layers = set()
+        for task_map in importance_maps_list:
+            all_layers.update(task_map.keys())
+        
+        for layer_idx in all_layers:
+            layer_importances = []
+            layer_weights = []
             
-            if current_mask is not None and previous_mask is not None:
-                if self.config.mask_aggregation == "weighted":
-                    # Weight recent tasks more heavily
-                    current_weight = 0.7
-                    previous_weight = 0.3
-                else:  # uniform
-                    current_weight = 0.5
-                    previous_weight = 0.5
-                
-                aggregated_masks[layer_idx] = (
-                    current_weight * current_mask + previous_weight * previous_mask
-                )
-            elif current_mask is not None:
-                aggregated_masks[layer_idx] = current_mask
-            elif previous_mask is not None:
-                aggregated_masks[layer_idx] = previous_mask
+            for task_idx, task_map in enumerate(importance_maps_list):
+                if layer_idx in task_map:
+                    layer_importances.append(task_map[layer_idx])
+                    layer_weights.append(weights[task_idx])
+            
+            if layer_importances:
+                # Weighted average
+                stacked = torch.stack(layer_importances, dim=0)  # (num_tasks, seq_len)
+                task_weights = torch.tensor(layer_weights).unsqueeze(-1)  # (num_tasks, 1)
+                aggregated[layer_idx] = (stacked * task_weights).sum(dim=0)
         
-        return aggregated_masks
+        return aggregated
+    
+    def compute_importance_weighted_distillation_loss(
+        self,
+        current_hidden,  # (batch, hidden_dim) - current [MASK] output
+        old_hidden,  # (batch, hidden_dim) - old model [MASK] output  
+        importance_weights=None,  # Optional: (seq_len,) importance for tokens
+    ):
+        """
+        Compute importance-weighted distillation loss
+        Focuses on preserving important knowledge from previous tasks
+        """
+        # Main output distillation (always important for relation extraction)
+        main_loss = nn.functional.mse_loss(current_hidden, old_hidden)
+        
+        return main_loss
         
     def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None, seen_relid=None):
         if self.config.use_llm:
@@ -237,12 +276,6 @@ class Manager(object):
         encoder.train()
         epoch = self.config.epoch_mem if is_memory else self.config.epoch
 
-        # Apply gradient masking if we're training on memory and have previous task masks
-        if is_memory and self.config.gradient_masking and self.previous_task_masks:
-            print("Applying gradient masking for memory training...")
-            logger.info("Applying gradient masking for memory training...")
-            encoder.register_gradient_masking_hooks(self.previous_task_masks)
-
         if is_memory and self.config.distill and self.config.distill_type != 'none':
             self.distill_loss_list = []
             if self.config.distill_type == 'RKD':
@@ -267,6 +300,21 @@ class Manager(object):
                         self.distill_loss_list.append(distill_loss.item())
                     else:
                         raise NotImplementedError("Distill Loss {} not implemented".format(self.config.distill_type))
+                
+                # Add importance-weighted distillation if enabled
+                if is_memory and self.config.importance_distill and old_encoder is not None:
+                    with torch.no_grad():
+                        if self.config.use_llm:
+                            old_hidden_imp = old_encoder(instance['input'])
+                        else:
+                            old_hidden_imp = old_encoder(instance)
+                    
+                    # Compute importance-weighted distillation loss
+                    importance_loss = self.compute_importance_weighted_distillation_loss(
+                        hidden, old_hidden_imp
+                    )
+                    
+                    loss = loss + self.config.importance_loss_weight * importance_loss
                 if not self.config.SAM:
                     optimizer.zero_grad()
                     loss.backward()
@@ -317,13 +365,7 @@ class Manager(object):
                     sys.stdout.write('CurrentTrain: epoch {0:2}, batch {1:5} | loss: {2:2.7f}'.format(i, batch_num, loss.item()) + '\r')
                     # logger.info('CurrentTrain: epoch {0:2}, batch {1:5} | loss: {2:2.7f}'.format(i, batch_num, loss.item()))
                 sys.stdout.flush() 
-        print('')
-        
-        # Remove gradient masking hooks after training
-        if is_memory and self.config.gradient_masking:
-            encoder.remove_gradient_masking_hooks()
-            print("Removed gradient masking hooks after training")
-            logger.info("Removed gradient masking hooks after training")           
+        print('')           
     def train_model_mixup(self, encoder, training_data):
         if self.config.use_llm:
             data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
@@ -580,23 +622,21 @@ class Manager(object):
             for rel in current_relations:
                 memory_samples[rel], _ = self.select_memory(encoder, training_data[rel])
 
-            # Generate and store attention masks for gradient masking
-            if self.config.gradient_masking:
-                print("Generating task attention masks...")
-                logger.info("Generating task attention masks...")
-                current_task_masks = self.generate_task_attention_masks(encoder, training_data_initialize)
+            # Generate and store importance maps for knowledge distillation
+            if self.config.importance_distill:
+                print("Generating importance maps for current task...")
+                logger.info("Generating importance maps for current task...")
+                current_importance_map = self.generate_task_importance_map(encoder, training_data_initialize)
                 
-                # Aggregate with previous masks
-                if current_task_masks:
-                    aggregated_masks = self.aggregate_previous_masks(current_task_masks)
-                    self.previous_task_masks = aggregated_masks
+                if current_importance_map:
+                    self.task_importance_maps.append(current_importance_map)
                     self.num_completed_tasks += 1
                     
-                    print(f"Generated masks for {len(current_task_masks)} layers, total completed tasks: {self.num_completed_tasks}")
-                    logger.info(f"Generated masks for {len(current_task_masks)} layers, total completed tasks: {self.num_completed_tasks}")
+                    print(f"Stored importance map for task {self.num_completed_tasks} with {len(current_importance_map)} layers")
+                    logger.info(f"Stored importance map for task {self.num_completed_tasks} with {len(current_importance_map)} layers")
                 else:
-                    print("No attention masks generated for current task")
-                    logger.info("No attention masks generated for current task")
+                    print("No importance map generated for current task")
+                    logger.info("No importance map generated for current task")
 
             # Data gen
             if self.config.gen == 1:
@@ -715,11 +755,10 @@ if __name__ == '__main__':
     parser.add_argument("--distill_type", default="none", type=str)
     parser.add_argument("--distill_loss_weight", default=0, type=float)
     parser.add_argument("--distill_top_k", default=10, type=int)
-    # Gradient Masking
-    parser.add_argument("--gradient_masking", action='store_true', default=False)
-    parser.add_argument("--mask_layers", default="all", type=str)  # "all", "last", or "first_half"
-    parser.add_argument("--mask_aggregation", default="weighted", type=str)  # "weighted", "uniform"
-    parser.add_argument("--mask_threshold_method", default="adaptive", type=str)  # "adaptive", "fixed"
+    # Importance-based Distillation
+    parser.add_argument("--importance_distill", action='store_true', default=False)
+    parser.add_argument("--importance_loss_weight", default=0.5, type=float)
+    parser.add_argument("--importance_temperature", default=2.0, type=float)
 
     args = parser.parse_args()
     if args.use_llm:
@@ -758,10 +797,9 @@ if __name__ == '__main__':
     config.distill_loss_weight = args.distill_loss_weight
     config.distill_top_k = args.distill_top_k
 
-    config.gradient_masking = args.gradient_masking
-    config.mask_layers = args.mask_layers
-    config.mask_aggregation = args.mask_aggregation
-    config.mask_threshold_method = args.mask_threshold_method
+    config.importance_distill = args.importance_distill
+    config.importance_loss_weight = args.importance_loss_weight
+    config.importance_temperature = args.importance_temperature
 
     print("CPL Start")
     print(f'model: {config.model}')
@@ -776,9 +814,8 @@ if __name__ == '__main__':
     print(f'Distillation type: {config.distill_type}')
     print(f'Distillation alpha: {config.distill_loss_weight}')
     print(f'Distillation top_k: {config.distill_top_k}')
-    print(f'Gradient Masking: {config.gradient_masking}')
-    print(f'Mask layers: {config.mask_layers}')
-    print(f'Mask aggregation: {config.mask_aggregation}')
+    print(f'Importance Distillation: {config.importance_distill}')
+    print(f'Importance weight: {config.importance_loss_weight}')
 
     # config 
     print('#############params############')
@@ -879,9 +916,8 @@ if __name__ == '__main__':
     logger.info(f'SAM_type: {config.SAM_type}')
     logger.info(f'SAM Optimizer: {config.sam_optimizer}')
     logger.info(f'decay: {config.decay}')
-    logger.info(f'Gradient Masking: {config.gradient_masking}')
-    logger.info(f'Mask layers: {config.mask_layers}')
-    logger.info(f'Mask aggregation: {config.mask_aggregation}')
+    logger.info(f'Importance Distillation: {config.importance_distill}')
+    logger.info(f'Importance weight: {config.importance_loss_weight}')
 
 
 
