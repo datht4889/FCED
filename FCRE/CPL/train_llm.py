@@ -146,6 +146,7 @@ class Manager(object):
                     old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
                     topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
                     if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
+                        breakpoint()
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                         loss = loss + distill_loss * self.config.distill_loss_weight
                         self.distill_loss_list.append(distill_loss.item())
@@ -666,5 +667,4 @@ if __name__ == '__main__':
 #     --distill_type RKD \
 #     --distill_loss_weight 0 \
 #     --distill_top_k 10 \
-#     --batch-size 2 \
-#     --total_round 1
+#     --batch-size 4
