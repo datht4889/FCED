@@ -634,10 +634,13 @@ if __name__ == '__main__':
     
     accs = np.array(acc_list)
     ave = np.mean(accs, axis=0)
+    std = np.std(accs, axis=0)
     print('----------END')
     print('his_acc mean: ', np.around(ave, 4))
+    print('his_acc std: ', np.around(std, 4))
     logger.info('----------END')
     logger.info(f'his_acc mean: {np.around(ave, 4)}')
+    logger.info(f'his_acc std: {np.around(std, 4)}')
 
 
 
