@@ -489,6 +489,7 @@ if __name__ == '__main__':
     parser.add_argument("--device", default="cuda:0", type=str)
     parser.add_argument("--task_name", default="Tacred", type=str)
     # mixup settings
+    parser.add_argument("--gen", default=1, type=int) # 1 for gen
     parser.add_argument("--num_k", default=5, type=int) # 5
     parser.add_argument("--num_gen", default=5, type=int) # 5 
     parser.add_argument("--mixup", action = 'store_true')
@@ -519,6 +520,7 @@ if __name__ == '__main__':
 
     config.task_name = args.task_name
     config.device = args.device
+    config.gen = args.gen
     config.num_k = args.num_k
     config.num_gen = args.num_gen
     config.mixup = args.mixup
@@ -666,6 +668,4 @@ if __name__ == '__main__':
 #     --distill_type RKD \
 #     --distill_loss_weight 0 \
 #     --distill_top_k 10 \
-#     --batch-size 4 \
-#     --epoch 1 \
-#     --epoch_mem 1
+#     --batch-size 4
