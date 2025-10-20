@@ -151,8 +151,8 @@ class Manager(object):
             self.distill_loss_list = []
             if self.config.distill_type == 'RKD':
                 distill_loss_fn = RKD(device=self.config.device)
-            elif self.config.distill_type == 'KLDivAndAngleLoss':
-                distill_loss_fn = KLDivAndAngleLoss(device=self.config.device)
+            elif self.config.distill_type == 'KLDivLoss':
+                distill_loss_fn = KLDivLoss(device=self.config.device)
 
         for i in range(epoch):
             for batch_num, (instance, labels, ind) in enumerate(data_loader):
@@ -165,7 +165,7 @@ class Manager(object):
                     old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                     old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
                     topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
-                    if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
+                    if self.config.distill_type in ['RKD', 'KLDivLoss']:
                         distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                         loss = loss + distill_loss * self.config.distill_loss_weight
                         self.distill_loss_list.append(distill_loss.item())
@@ -199,7 +199,7 @@ class Manager(object):
                         old_hidden, old_outputs_words, old_topk_hidden_indices = old_encoder(instance, is_distill=True, top_k=self.config.distill_top_k)
                         old_topk_hidden = torch.gather(old_outputs_words, dim=1, index=old_topk_hidden_indices)  # (B, k, H)
                         topk_hidden = torch.gather(outputs_words, dim=1, index=topk_hidden_indices)  # (B, k, H)
-                        if self.config.distill_type in ['RKD', 'KLDivAndAngleLoss']:
+                        if self.config.distill_type in ['RKD', 'KLDivLoss']:
                             distill_loss = distill_loss_fn(topk_hidden, old_topk_hidden)
                             loss = loss + distill_loss * self.config.distill_loss_weight
                         else:

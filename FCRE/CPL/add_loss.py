@@ -1133,40 +1133,11 @@ class RKD(Distiller):
         return loss
 
 
-class KLDivAndAngleLoss(Distiller):
+class KLDivLoss(Distiller):
     def __init__(self, temperature: float = 1.0, device: str = 'cpu'):
         super().__init__()
         self.temperature = temperature
         self.device = device
-
-    def rkd_angle(
-                self, 
-                student, # [B, K, N]
-                teacher  # [B, K, N]
-                ):
-        B, K, N = student.shape
-        total_loss = 0.0
-        
-        # Process each batch separately
-        for b in range(B):
-            student_b = student[b]  # [K, N]
-            teacher_b = teacher[b]  # [K, N]
-            
-            # Compute teacher angles for this batch
-            with torch.no_grad():
-                td = (teacher_b.unsqueeze(0) - teacher_b.unsqueeze(1))  # [K, K, N]
-                norm_td = F.normalize(td, p=2, dim=2)
-                t_angle = torch.bmm(norm_td, norm_td.transpose(1, 2)).view(-1)
-            
-            # Compute student angles for this batch
-            sd = (student_b.unsqueeze(0) - student_b.unsqueeze(1))  # [K, K, N]
-            norm_sd = F.normalize(sd, p=2, dim=2)
-            s_angle = torch.bmm(norm_sd, norm_sd.transpose(1, 2)).view(-1)
-            
-            batch_loss = F.smooth_l1_loss(s_angle, t_angle, reduction='mean')
-            total_loss += batch_loss
-        
-        return total_loss / B
 
     def forward(
         self,
@@ -1206,10 +1177,7 @@ class KLDivAndAngleLoss(Distiller):
         # Average over batch and tokens
         kl_loss = kl_loss / (B * K)
 
-        # Angle Loss (already handles batch processing correctly)
-        angle_loss = self.rkd_angle(logits_student, logits_teacher)
-
-        return kl_loss + angle_loss
+        return kl_loss
 
 class OFA(Distiller):
     def __init__(self, eps: float = 1.0, temperature: float = 1.0, device: str = 'cpu'):
