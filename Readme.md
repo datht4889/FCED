@@ -1,4 +1,4 @@
-# Mutual-pairing data augmentation for FCRE
+# Enhancing Few-Shot Continual Relation Extraction via Pairwise Augmentation and Guided Sharpness-Aware Optimization
 
 ## FCRE
 ### Change directory
