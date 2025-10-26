@@ -534,6 +534,18 @@ if __name__ == '__main__':
 
 
 
+# CUDA_VISIBLE_DEVICES=0 python train_llm.py \
+# --task_name FewRel \
+# --num_k 5 \
+# --num_gen 2 \
+# --mixup \
+# --epoch 8 \
+# --epoch_mem 6 \
+# --mixup_loss_1 0.25 \
+# --mixup_loss_2 0.25 \
+# --SAM \
+# --SAM_type full \
+# --rho 0.05
             
         
             
