@@ -490,7 +490,7 @@ class Manager(object):
                     for sample in memory_samples[rel]:
                         sample_text = self._get_sample_text(self.config.training_data, sample['index'])
                         gen_samples = gen_data(self.r2desc, self.rel2id, sample_text, self.config.num_gen, self.config.gpt_temp, self.config.key)
-                        print(gen_samples)
+                        # print(gen_samples)
                         gen_text += gen_samples
                 for sample in gen_text:
                     data_generation.append(sampler.tokenize(sample))
