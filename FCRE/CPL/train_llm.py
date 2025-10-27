@@ -100,18 +100,9 @@ class Manager(object):
         
     def train_model(self, encoder, old_encoder, training_data, is_memory=False, seen_proto=None, seen_relid=None):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
-        optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
-        if self.config.base_optimizer == 'Adam':
-            optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
-        elif self.config.base_optimizer == 'AdamW':
-            optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+        optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
         if self.config.SAM:
-            # base_optimizer = optim.Adam
-            # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-            if self.config.base_optimizer == 'Adam':
-                base_optimizer = optim.Adam
-            elif self.config.base_optimizer == 'AdamW':
-                base_optimizer = optim.AdamW
+            base_optimizer = optim.AdamW
             if self.config.sam_optimizer=='SAM':
                 optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
             elif self.config.sam_optimizer=='ASAM':
@@ -133,8 +124,8 @@ class Manager(object):
             self.distill_loss_list = []
             if self.config.distill_type == 'RKD':
                 distill_loss_fn = RKD(device=self.config.device)
-            elif self.config.distill_type == 'KLDivAndAngleLoss':
-                distill_loss_fn = KLDivAndAngleLoss(device=self.config.device)
+            elif self.config.distill_type == 'KLDivLoss':
+                distill_loss_fn = KLDivLoss(device=self.config.device)
 
 
         for i in range(epoch):
@@ -200,19 +191,12 @@ class Manager(object):
         print('')           
     def train_model_mixup(self, encoder, training_data):
         data_loader = get_data_loader_BERTLLM(self.config, training_data, shuffle=True)
-        if self.config.base_optimizer == 'Adam':
-            optimizer = optim.Adam(params=encoder.parameters(), lr=self.config.lr)
-        elif self.config.base_optimizer == 'AdamW':
-            optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
+        optimizer = optim.AdamW(params=encoder.parameters(), lr=self.config.lr)
             
         if self.config.SAM:
             # base_optimizer = optim.Adam
             # optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr)
-
-            if self.config.base_optimizer == 'Adam':
-                base_optimizer = optim.Adam
-            elif self.config.base_optimizer == 'AdamW':
-                base_optimizer = optim.AdamW
+            base_optimizer = optim.AdamW
             if self.config.sam_optimizer=='SAM':
                 optimizer = SAM(params=encoder.parameters(), base_optimizer=base_optimizer, rho=self.config.rho, adaptive=True, lr=self.config.lr, weight_decay=self.config.decay, betas=(0.9, 0.999))
             elif self.config.sam_optimizer=='ASAM':
@@ -501,7 +485,6 @@ if __name__ == '__main__':
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
     parser.add_argument("--total_round", default=6, type=int)
     # SAM
-    parser.add_argument("--base_optimizer", default="AdamW", type=str)
     parser.add_argument("--SAM", action = 'store_true', default=False)
     parser.add_argument("--sam_optimizer", default="SAM", type=str)
     parser.add_argument("--SAM_type", default="current", type=str)
@@ -656,7 +639,6 @@ if __name__ == '__main__':
 # CUDA_VISIBLE_DEVICES=0 python train_llm.py --task_name Tacred \
 #     --num_k 5 \
 #     --num_gen 5 \
-#     --base_optimizer AdamW \
 #     --decay 0.01 \
 #     --mixup \
 #     --SAM \

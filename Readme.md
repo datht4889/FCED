@@ -1,4 +1,4 @@
-# Mutual-pairing data augmentation for FCRE
+# PRAGAS: Enhancing Few-Shot Continual Relation Extraction via Pairwise Augmentation and Guided Sharpness-Aware Optimization
 
 ## FCRE
 ### Change directory
@@ -11,35 +11,32 @@ cd FCRE
 pip install -r requirements.txt
 ```
 
-### Run CPL (with bert and LLM)
+### Run CPL (with BERT and LLM)
 ```bash
 cd CPL
 bash bash.sh
 bash bash_llm.sh
 ```
 
-### Run SCKD
+### Run SIRUS (with BERT)
 ```bash
-cd SCKD
-bash bash.sh
+cd SIRUS/BERT/bash
+bash fewrel_5shot.sh
+bash tacred_5shot.sh
 ```
-### Run SCKD MI
+
+### Run SIRUS (with LLM)
 ```bash
-cd CPL-mmi
-bash bash.sh
-```
-### Run CPL MI
-```bash
-cd SCKD
-bash bash.sh
+cd SIRUS/LLM/bash
+bash fewrel_5shot.sh
+bash tacred_5shot.sh
 ```
 
 
-
-## FCED
+## CED
 ### Change directory
 ```bash
-cd FCED
+cd CED
 ```
 ### Install requirements
 ```bash
@@ -47,5 +44,5 @@ pip install -r requirements.txt
 ```
 ### Run
 ```bash
-bash bash.sh
+bash sh/maven.sh
 ```
