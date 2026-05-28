@@ -392,6 +392,11 @@ class Manager(object):
         cur_acc_num, total_acc_num = [], []
         memory_samples = {}
         data_generation = []
+
+        # Log for each task (for F / BWT computation)
+        all_cur_acc_by_task = []
+        test_data_initialize_cur_by_task = []
+
         for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations) in enumerate(sampler):
       
@@ -465,7 +470,17 @@ class Manager(object):
             print('his_acc: ', total_acc)
             logger.info(f"cur_acc: {cur_acc}")
             logger.info(f"his_acc: {total_acc}")
-        
+
+            if self.config.eval_each_task:
+                cur_acc_by_task = []
+                test_data_initialize_cur_by_task.append(test_data_initialize_cur)
+                for task_test_data in test_data_initialize_cur_by_task:
+                    cur_acc_by_task.append('{:.4f}'.format(
+                        self.eval_encoder_proto(encoder, seen_proto, seen_relid, task_test_data)))
+                all_cur_acc_by_task.append(cur_acc_by_task)
+                print('all_cur_acc_by_task: ', all_cur_acc_by_task)
+                logger.info(f"all_cur_acc_by_task: {all_cur_acc_by_task}")
+
         # save model
         torch.save(encoder.state_dict(), f'CPL-mmi-{config.task_name}-shot_{config.num_k}-numgen_{config.num_gen}-epoch_{config.epoch}_{config.epoch_mem}-lossfactor_{config.mixup_loss_1}_{config.mixup_loss_2}-rho_{config.rho}.pt')
 
@@ -485,7 +500,8 @@ if __name__ == '__main__':
     parser.add_argument("--mixup_loss_2", default=0.25, type=float)
     parser.add_argument("--SAM", action = 'store_true')
     parser.add_argument("--rho", default=0.05, type=float)
-    
+    parser.add_argument("--eval_each_task", action='store_true', default=True)
+
     args = parser.parse_args()
     config = Config('config.ini')
     config.task_name = args.task_name
@@ -498,7 +514,8 @@ if __name__ == '__main__':
     config.mixup_loss_2 = args.mixup_loss_2
     config.SAM = args.SAM
     config.rho = args.rho
-    
+    config.eval_each_task = args.eval_each_task
+
     print('#############params############')
     print(config.device)
     config.device = torch.device(config.device)

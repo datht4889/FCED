@@ -350,7 +350,11 @@ class Manager(object):
         cur_acc_num, total_acc_num = [], []
         memory_samples = {}
         data_generation = []
-        
+
+        # Log for each task (for F / BWT computation)
+        all_cur_acc_by_task = []
+        test_data_initialize_cur_by_task = []
+
         self.tokenizer = BertTokenizer.from_pretrained(self.config.bert_path)
         for step, (training_data, valid_data, test_data, current_relations, \
             historic_test_data, seen_relations, seen_descriptions) in enumerate(sampler):
@@ -441,6 +445,16 @@ class Manager(object):
             logger.info(f"cur_acc: {cur_acc}")
             logger.info(f"his_acc: {total_acc}")
 
+            if self.config.eval_each_task:
+                cur_acc_by_task = []
+                test_data_initialize_cur_by_task.append(test_data_initialize_cur)
+                for task_test_data in test_data_initialize_cur_by_task:
+                    cur_acc_by_task.append('{:.4f}'.format(
+                        self.eval_encoder_proto(encoder, seen_proto, seen_relid, task_test_data)))
+                all_cur_acc_by_task.append(cur_acc_by_task)
+                print('all_cur_acc_by_task: ', all_cur_acc_by_task)
+                logger.info(f"all_cur_acc_by_task: {all_cur_acc_by_task}")
+
         torch.cuda.empty_cache()
         return total_acc_num
 
@@ -460,7 +474,8 @@ if __name__ == '__main__':
     parser.add_argument("--SAM", action = 'store_true', default=True)
     parser.add_argument("--SAM_type", default="current", type=str, help="'current' for SAM in current task or 'full' for SAM in all data")
     parser.add_argument("--rho", default=0.05, type=float) # 0.05, 0.1
-    
+    parser.add_argument("--eval_each_task", action='store_true', default=True)
+
     args = parser.parse_args()
     if args.use_llm:
         config = Config('config_llm.ini')
@@ -479,6 +494,7 @@ if __name__ == '__main__':
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
     config.rho = args.rho
+    config.eval_each_task = args.eval_each_task
 
     # config 
     print('#############params############')
