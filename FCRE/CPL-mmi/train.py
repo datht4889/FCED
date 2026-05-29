@@ -472,6 +472,10 @@ class Manager(object):
             logger.info(f"his_acc: {total_acc}")
 
             if self.config.eval_each_task:
+                # Snapshot RNG state — eval data loaders consume randomness
+                # (num_workers seeding); restoring keeps training reproducible.
+                rng_states = (torch.get_rng_state(), torch.cuda.get_rng_state_all(),
+                              np.random.get_state(), random.getstate())
                 cur_acc_by_task = []
                 test_data_initialize_cur_by_task.append(test_data_initialize_cur)
                 for task_test_data in test_data_initialize_cur_by_task:
@@ -480,6 +484,10 @@ class Manager(object):
                 all_cur_acc_by_task.append(cur_acc_by_task)
                 print('all_cur_acc_by_task: ', all_cur_acc_by_task)
                 logger.info(f"all_cur_acc_by_task: {all_cur_acc_by_task}")
+                torch.set_rng_state(rng_states[0])
+                torch.cuda.set_rng_state_all(rng_states[1])
+                np.random.set_state(rng_states[2])
+                random.setstate(rng_states[3])
 
         # save model
         torch.save(encoder.state_dict(), f'CPL-mmi-{config.task_name}-shot_{config.num_k}-numgen_{config.num_gen}-epoch_{config.epoch}_{config.epoch_mem}-lossfactor_{config.mixup_loss_1}_{config.mixup_loss_2}-rho_{config.rho}.pt')
