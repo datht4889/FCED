@@ -1,18 +1,4 @@
-# Dependencies for FCED/run.sh (CPL+PRAGAS sensitivity sweeps).
-# Pin theo conda env `pragas-paper` da chay thanh cong cac runs (2026-05-27..30).
-# Doi chieu voi old_log/fewrel-cpl-pragas.log header neu can.
-#
-# Python 3.11. CUDA 12.1 driver tren A100 server.
-#
-# Cach cai:
-#   conda create -n pragas-paper python=3.11 -y && conda activate pragas-paper
-#   pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121
-#   pip install -r requirements.txt
-#   python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
-#     # Mong doi: 2.4.1+cu121 True
-#
-# Torch khong pin trong file nay vi can install rieng voi --index-url cho CUDA wheel.
-
+torch==2.4.1
 numpy==1.26.4
 scikit-learn==1.2.2
 transformers==4.44.2
