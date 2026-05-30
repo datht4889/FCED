@@ -2,18 +2,24 @@
 # =============================================================================
 # Sensitivity sweep for CPL+PRAGAS (response to R1 W3 / R2 W3)
 # =============================================================================
-# Sweeps lambda_rho, beta_1, beta_2 on CPL+PRAGAS framework over FewRel + TACRED.
-# Six seeds per cell (matches main-results protocol).
+# Sweeps lambda_rho, beta_1, beta_2, margin m, lambda_A/lambda_D on the
+# CPL+PRAGAS framework over FewRel + TACRED.  Six seeds per cell (matches the
+# main-results protocol).
+#
+# Log layout (one file per task x value, grouped by hyperparameter):
+#   log/sensitivity-paper/rho_weight/<Task>_rw<value>.log
+#   log/sensitivity-paper/beta_1/<Task>_b1_<value>.log
+#   log/sensitivity-paper/beta_2/<Task>_b2_<value>.log
+#   log/sensitivity-paper/ml_margin/<Task>_m<value>.log
+#   log/sensitivity-paper/lambda_AD/<Task>_w<value>.log
 #
 # CLI <-> paper Table 3 mapping:
 #   --rho_weight     = lambda_rho   (default 6)
 #   --mixup_loss_1   = beta_1       (default 0.25)
 #   --mixup_loss_2   = beta_2       (default 0.25)
-#
-# NOTE: margin m (Table 3 default 1.0) and lambda_A / lambda_D are not currently
-# exposed as CLI args in FCRE/CPL/train.py. To sweep them, either (a) add CLI
-# flags to train.py, or (b) edit the relevant constants in mixup.py / add_loss.py
-# before each run. Marked as TODO at the bottom of this script.
+#   --ml_margin      = margin m     (default 1.0)
+#   --lambda_A       = lambda_A     (default 1.0)
+#   --lambda_D       = lambda_D     (default 1.0)
 # =============================================================================
 
 set -euo pipefail
@@ -43,22 +49,25 @@ COMMON_FLAGS="\
   --distill_top_k 10 \
   --batch-size 16"
 
+# run_one <task> <param_subdir> <filename_label> [extra train.py flags...]
+#   Final log path: log/sensitivity-paper/<param_subdir>/<task>_<filename_label>.log
 run_one() {
-  local task="$1"; local label="$2"; shift 2
-  local logdir="$ROOT_DIR/log/sensitivity-paper/$label"
+  local task="$1"; local param_dir="$2"; local fname="$3"; shift 3
+  local logdir="$ROOT_DIR/log/sensitivity-paper/$param_dir"
   mkdir -p "$logdir"
-  local logfile="$logdir/${task}_${label}.log"
-  echo "[sensitivity] task=$task label=$label -> $logfile"
+  local logfile="$logdir/${task}_${fname}.log"
+  echo "[sensitivity] task=$task param=$param_dir cell=$fname -> $logfile"
   CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} TOKENIZER_PARALELISM=True \
     python train.py --task_name "$task" $COMMON_FLAGS "$@" 2>&1 | tee "$logfile"
 }
 
 # ----------------------------------------------------------------------------
 # (i) lambda_rho sweep (--rho_weight)  default 6  -> sweep {0.5, 1, 2, 3, 4, 6, 8, 10}
+# Output: log/sensitivity-paper/rho_weight/<Task>_rw<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
   for rw in 0.5 1 2 3 4 6 8 10; do
-    run_one "$task" "rho_weight/rw${rw}" \
+    run_one "$task" "rho_weight" "rw${rw}" \
       --rho_weight "$rw" \
       --mixup_loss_1 0.25 \
       --mixup_loss_2 0.25
@@ -67,10 +76,11 @@ done
 
 # ----------------------------------------------------------------------------
 # (ii) beta_1 sweep (--mixup_loss_1)  default 0.25  -> sweep {0.1, 0.25, 0.5, 1.0}
+# Output: log/sensitivity-paper/beta_1/<Task>_b1_<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
   for b1 in 0.1 0.25 0.5 1.0; do
-    run_one "$task" "beta_1/b1_${b1}" \
+    run_one "$task" "beta_1" "b1_${b1}" \
       --rho_weight 6 \
       --mixup_loss_1 "$b1" \
       --mixup_loss_2 0.25
@@ -79,10 +89,11 @@ done
 
 # ----------------------------------------------------------------------------
 # (iii) beta_2 sweep (--mixup_loss_2)  default 0.25  -> sweep {0.1, 0.25, 0.5, 1.0}
+# Output: log/sensitivity-paper/beta_2/<Task>_b2_<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
   for b2 in 0.1 0.25 0.5 1.0; do
-    run_one "$task" "beta_2/b2_${b2}" \
+    run_one "$task" "beta_2" "b2_${b2}" \
       --rho_weight 6 \
       --mixup_loss_1 0.25 \
       --mixup_loss_2 "$b2"
@@ -92,10 +103,11 @@ done
 # ----------------------------------------------------------------------------
 # (iv) margin m sweep (--ml_margin)  default 1.0  -> sweep {0.25, 0.5, 1.0, 2.0, 4.0}
 # Wired in train.py to NegativeCosSimLoss(temperature=ml_margin) at the L_ML site.
+# Output: log/sensitivity-paper/ml_margin/<Task>_m<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
   for m in 0.25 0.5 1.0 2.0 4.0; do
-    run_one "$task" "ml_margin/m_${m}" \
+    run_one "$task" "ml_margin" "m${m}" \
       --rho_weight 6 \
       --mixup_loss_1 0.25 \
       --mixup_loss_2 0.25 \
@@ -108,10 +120,11 @@ done
 # Wired in train.py:
 #   lambda_A multiplies the 0.5 weight on the composite contrastive loss `loss`
 #   lambda_D multiplies distill_loss_weight on the distill loss term
+# Output: log/sensitivity-paper/lambda_AD/<Task>_w<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
   for w in 0.25 0.5 1.0 2.0 4.0; do
-    run_one "$task" "lambda_AD/w_${w}" \
+    run_one "$task" "lambda_AD" "w${w}" \
       --rho_weight 6 \
       --mixup_loss_1 0.25 \
       --mixup_loss_2 0.25 \
