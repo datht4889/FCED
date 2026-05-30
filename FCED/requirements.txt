@@ -1,8 +1,15 @@
-matplotlib==3.3.4
-numpy==1.26.2
-scikit_learn==1.5.1
-torch==2.2.1
-tqdm==4.59.0
-transformers==4.40.2
+# Pin theo conda env `pragas-paper` da chay thanh cong cac PRAGAS runs (2026-05-27..30).
+# Python 3.11. CUDA 12.1 (driver A100 server).
+#
+# Torch: cai rieng vi can --index-url cho CUDA wheel:
+#   pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121
 
-# Different CUDA versions may influence the final results, our experiments are performed on CUDA 11.6.
+numpy==1.26.4
+scikit-learn==1.2.2
+transformers==4.44.2
+tokenizers==0.19.1
+tqdm==4.67.3
+openai==2.38.0
+matplotlib
+
+# Different CUDA versions may influence the final results.
