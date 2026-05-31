@@ -2,58 +2,48 @@
 # =============================================================================
 # Sensitivity sweep for CPL+PRAGAS (response to R1 W3 / R2 W3)
 # =============================================================================
-# Sweeps lambda_rho, beta_1, beta_2, margin m, lambda_A/lambda_D on the
-# CPL+PRAGAS framework over FewRel + TACRED.  Six seeds per cell (matches the
-# main-results protocol).
+# Sweeps the hyperparameters that the saveSynData-branch train.py supports,
+# plus two minimal CLI additions (--ml_margin, --lambda_A) on top of that base.
 #
 # Log layout (one file per task x value, grouped by hyperparameter):
-#   log/sensitivity-paper/rho_weight/<Task>_rw<value>.log
+#   log/sensitivity-paper/rho/<Task>_rho_<value>.log
 #   log/sensitivity-paper/beta_1/<Task>_b1_<value>.log
 #   log/sensitivity-paper/beta_2/<Task>_b2_<value>.log
 #   log/sensitivity-paper/ml_margin/<Task>_m<value>.log
-#   log/sensitivity-paper/lambda_AD/<Task>_w<value>.log
+#   log/sensitivity-paper/lambda_A/<Task>_la_<value>.log
 #
-# CLI <-> paper Table 3 mapping:
-#   --rho_weight     = lambda_rho   (default 6)
-#   --mixup_loss_1   = beta_1       (default 0.25)
-#   --mixup_loss_2   = beta_2       (default 0.25)
-#   --ml_margin      = margin m     (default 1.0)
-#   --lambda_A       = lambda_A     (default 1.0)
-#   --lambda_D       = lambda_D     (default 1.0)
+# CLI <-> paper mapping (Table 3, CPL framework):
+#   --rho            = SAM perturbation radius rho     (default 0.05)
+#   --mixup_loss_1   = beta_1                          (default 0.25)
+#   --mixup_loss_2   = beta_2                          (default 0.25)
+#   --ml_margin      = margin m (NegativeCosSimLoss temperature)  (default 1.0)
+#   --lambda_A       = lambda_A (composite contrastive loss weight) (default 1.0)
+#
+# NOT swept here (mechanism absent in saveSynData branch):
+#   - lambda_rho: requires dynamic-rho scaling (GuidedSAM), not in this train.py
+#   - lambda_D:   requires explicit distillation loss term, not in this train.py
 # =============================================================================
 
 set -euo pipefail
 
-# Locate the CPL train.py relative to this script's parent (PRAGAS root).
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-CPL_DIR="$ROOT_DIR/FCRE/CPL"
+# Locate the CPL train.py (FCED/FCRE/CPL/, sibling under this script's dir).
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CPL_DIR="$SCRIPT_DIR/FCRE/CPL"
 cd "$CPL_DIR"
 
-# Common flags (match fewrel_5shot_pragas.sh / tacred_5shot_pragas.sh setup).
+# Common flags (match the saveSynData branch defaults).
 COMMON_FLAGS="\
-  --model bert \
-  --output-size 768 \
-  --max-length 256 \
   --num_k 5 \
-  --gen 1 \
   --num_gen 5 \
-  --decay 0.01 \
+  --gen 1 \
   --mixup \
-  --SAM \
-  --sam_optimizer ASAM \
-  --rho 0.1 \
-  --dynamic-rho \
-  --distill \
-  --distill_type RKD \
-  --distill_loss_weight 0 \
-  --distill_top_k 10 \
-  --batch-size 16"
+  --SAM"
 
 # run_one <task> <param_subdir> <filename_label> [extra train.py flags...]
-#   Final log path: log/sensitivity-paper/<param_subdir>/<task>_<filename_label>.log
+#   Final log path: $SCRIPT_DIR/log/sensitivity-paper/<param_subdir>/<task>_<filename_label>.log
 run_one() {
   local task="$1"; local param_dir="$2"; local fname="$3"; shift 3
-  local logdir="$ROOT_DIR/log/sensitivity-paper/$param_dir"
+  local logdir="$SCRIPT_DIR/log/sensitivity-paper/$param_dir"
   mkdir -p "$logdir"
   local logfile="$logdir/${task}_${fname}.log"
   echo "[sensitivity] task=$task param=$param_dir cell=$fname -> $logfile"
@@ -62,15 +52,17 @@ run_one() {
 }
 
 # ----------------------------------------------------------------------------
-# (i) lambda_rho sweep (--rho_weight)  default 6  -> sweep {0.5, 1, 2, 3, 4, 6, 8, 10}
-# Output: log/sensitivity-paper/rho_weight/<Task>_rw<value>.log
+# (i) SAM perturbation radius rho (--rho)  default 0.05  -> sweep {0.01, 0.05, 0.1, 0.2, 0.5}
+# Output: log/sensitivity-paper/rho/<Task>_rho_<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
-  for rw in 0.5 1 2 3 4 6 8 10; do
-    run_one "$task" "rho_weight" "rw${rw}" \
-      --rho_weight "$rw" \
+  for r in 0.01 0.05 0.1 0.2 0.5; do
+    run_one "$task" "rho" "rho_${r}" \
+      --rho "$r" \
       --mixup_loss_1 0.25 \
-      --mixup_loss_2 0.25
+      --mixup_loss_2 0.25 \
+      --ml_margin 1.0 \
+      --lambda_A 1.0
   done
 done
 
@@ -81,9 +73,11 @@ done
 for task in FewRel Tacred; do
   for b1 in 0.1 0.25 0.5 1.0; do
     run_one "$task" "beta_1" "b1_${b1}" \
-      --rho_weight 6 \
+      --rho 0.05 \
       --mixup_loss_1 "$b1" \
-      --mixup_loss_2 0.25
+      --mixup_loss_2 0.25 \
+      --ml_margin 1.0 \
+      --lambda_A 1.0
   done
 done
 
@@ -94,41 +88,42 @@ done
 for task in FewRel Tacred; do
   for b2 in 0.1 0.25 0.5 1.0; do
     run_one "$task" "beta_2" "b2_${b2}" \
-      --rho_weight 6 \
+      --rho 0.05 \
       --mixup_loss_1 0.25 \
-      --mixup_loss_2 "$b2"
+      --mixup_loss_2 "$b2" \
+      --ml_margin 1.0 \
+      --lambda_A 1.0
   done
 done
 
 # ----------------------------------------------------------------------------
 # (iv) margin m sweep (--ml_margin)  default 1.0  -> sweep {0.25, 0.5, 1.0, 2.0, 4.0}
-# Wired in train.py to NegativeCosSimLoss(temperature=ml_margin) at the L_ML site.
+# Wired to NegativeCosSimLoss(temperature=ml_margin) at the L_ML site.
 # Output: log/sensitivity-paper/ml_margin/<Task>_m<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
   for m in 0.25 0.5 1.0 2.0 4.0; do
     run_one "$task" "ml_margin" "m${m}" \
-      --rho_weight 6 \
+      --rho 0.05 \
       --mixup_loss_1 0.25 \
       --mixup_loss_2 0.25 \
-      --ml_margin "$m"
+      --ml_margin "$m" \
+      --lambda_A 1.0
   done
 done
 
 # ----------------------------------------------------------------------------
-# (v) lambda_A / lambda_D sweep  default 1.0  -> sweep {0.25, 0.5, 1.0, 2.0, 4.0}
-# Wired in train.py:
-#   lambda_A multiplies the 0.5 weight on the composite contrastive loss `loss`
-#   lambda_D multiplies distill_loss_weight on the distill loss term
-# Output: log/sensitivity-paper/lambda_AD/<Task>_w<value>.log
+# (v) lambda_A sweep (--lambda_A)  default 1.0  -> sweep {0.25, 0.5, 1.0, 2.0, 4.0}
+# Wired to: sum_loss += lambda_A * 0.5 * loss  (composite contrastive loss).
+# Output: log/sensitivity-paper/lambda_A/<Task>_la_<value>.log
 # ----------------------------------------------------------------------------
 for task in FewRel Tacred; do
   for w in 0.25 0.5 1.0 2.0 4.0; do
-    run_one "$task" "lambda_AD" "w${w}" \
-      --rho_weight 6 \
+    run_one "$task" "lambda_A" "la_${w}" \
+      --rho 0.05 \
       --mixup_loss_1 0.25 \
       --mixup_loss_2 0.25 \
-      --lambda_A "$w" \
-      --lambda_D "$w"
+      --ml_margin 1.0 \
+      --lambda_A "$w"
   done
 done

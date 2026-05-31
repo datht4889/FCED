@@ -176,7 +176,9 @@ class Manager(object):
         epoch = 2
         
         loss_retrieval = MultipleNegativesRankingLoss()
-        neg_cos_sim_loss = NegativeCosSimLoss()
+        # Paper Table 3: margin m default 1.0. NegativeCosSimLoss is parameterised
+        # only by `temperature`; treat --ml_margin as that temperature for sweep.
+        neg_cos_sim_loss = NegativeCosSimLoss(temperature=self.config.ml_margin)
         
         
         for i in range(epoch):
@@ -228,7 +230,7 @@ class Manager(object):
                 if not torch.isnan(loss2).any():
                     sum_loss += self.config.mixup_loss_2*loss2
                 if not torch.isnan(loss).any():
-                    sum_loss += 0.5*loss
+                    sum_loss += self.config.lambda_A * 0.5 * loss
                 
                 if not self.config.SAM:
                     optimizer.zero_grad()
@@ -263,7 +265,7 @@ class Manager(object):
                     if not torch.isnan(loss2).any():
                         sum_loss += self.config.mixup_loss_2*loss2
                     if not torch.isnan(loss).any():
-                        sum_loss += 0.5*loss
+                        sum_loss += self.config.lambda_A * 0.5 * loss
                     sum_loss.backward()
                     optimizer.second_step(zero_grad=True)
                     
@@ -455,8 +457,12 @@ if __name__ == '__main__':
     parser.add_argument("--mixup", action = 'store_true', default=True)
     parser.add_argument("--epoch", default=8, type=int) # 8, 10
     parser.add_argument("--epoch_mem", default=6, type=int) # 6, 10
-    parser.add_argument("--mixup_loss_1", default=0.25, type=float) # 0.25, 0.5
-    parser.add_argument("--mixup_loss_2", default=0.25, type=float) # 0.25, 0.5
+    parser.add_argument("--mixup_loss_1", default=0.25, type=float) # paper: beta_1 (0.25, 0.5)
+    parser.add_argument("--mixup_loss_2", default=0.25, type=float) # paper: beta_2 (0.25, 0.5)
+    # PRAGAS L_ML margin + composite-loss weight (paper Table 3 defaults).
+    # Named --ml_margin to avoid collision with config.ini's `margin` (CPL base loss).
+    parser.add_argument("--ml_margin", default=1.0, type=float, help="Margin m for PRAGAS L_ML; wired into NegativeCosSimLoss temperature (paper Table 3 default: 1.0).")
+    parser.add_argument("--lambda_A", default=1.0, type=float, help="Weight lambda_A on the composite contrastive loss; multiplies the hardcoded 0.5 (paper Table 3 default: 1.0).")
     parser.add_argument("--SAM", action = 'store_true', default=True)
     parser.add_argument("--SAM_type", default="current", type=str, help="'current' for SAM in current task or 'full' for SAM in all data")
     parser.add_argument("--rho", default=0.05, type=float) # 0.05, 0.1
@@ -476,6 +482,8 @@ if __name__ == '__main__':
     config.epoch_mem = args.epoch_mem
     config.mixup_loss_1 = args.mixup_loss_1
     config.mixup_loss_2 = args.mixup_loss_2
+    config.ml_margin = args.ml_margin       # paper m: routed to NegativeCosSimLoss(temperature)
+    config.lambda_A = args.lambda_A         # paper lambda_A: multiplies hardcoded 0.5 on composite contrastive loss
     config.SAM = args.SAM
     config.SAM_type = args.SAM_type
     config.rho = args.rho
